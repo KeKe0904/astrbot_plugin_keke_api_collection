@@ -56,9 +56,6 @@ class KekeApiCollectionPlugin(Star):
             yield event.plain_result(f"未找到API: {api_name}")
             return
 
-        # 发送请求中提示
-        yield event.plain_result(f"正在获取{api_name}，请稍候...")
-
         # 获取API数据
         result = await self.fetch_api(url)
 
