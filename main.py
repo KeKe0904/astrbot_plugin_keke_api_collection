@@ -1,4 +1,4 @@
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
+from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 import aiohttp
@@ -6,10 +6,9 @@ import json
 import base64
 import platform
 import os
-import sys
 import psutil
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿", "1.2.0")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿", "1.3.0")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -33,33 +32,75 @@ class KekeApiCollectionPlugin(Star):
             except Exception as e:
                 logger.error(f"解码API地址失败: {e}")
                 self.api_map[key] = ""
+        # 初始化ClientSession
+        self.session = None
 
     async def initialize(self):
         """插件初始化方法"""
+        # 创建ClientSession
+        self.session = aiohttp.ClientSession()
         logger.info("柯柯API集合插件初始化完成")
 
     async def fetch_api(self, url):
         """异步获取API数据"""
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=10) as response:
+        max_retries = 3
+        retry_delay = 1
+        
+        for attempt in range(max_retries):
+            try:
+                # 使用复用的ClientSession
+                if not self.session:
+                    self.session = aiohttp.ClientSession()
+                
+                async with self.session.get(url, timeout=10) as response:
+                    logger.info(f"API请求状态码: {response.status}")
+                    logger.info(f"API响应头: {dict(response.headers)}")
+                    
+                    # 对于5xx错误，进行重试
+                    if 500 <= response.status < 600:
+                        if attempt < max_retries - 1:
+                            logger.warning(f"API返回{response.status}错误，第{attempt+1}次重试...")
+                            import asyncio
+                            await asyncio.sleep(retry_delay * (2 ** attempt))  # 指数退避
+                            continue
+                        else:
+                            return {"error": f"API请求失败，状态码：{response.status}"}
+                    
                     if response.status == 200:
                         # 尝试解析JSON响应
                         try:
-                            return await response.json()
-                        except:
+                            json_data = await response.json()
+                            logger.info(f"API返回JSON数据: {json_data}")
+                            return json_data
+                        except (aiohttp.ContentTypeError, json.JSONDecodeError) as json_error:
+                            logger.info(f"JSON解析失败: {json_error}")
                             # 如果不是JSON，返回文本或二进制数据
                             content_type = response.headers.get('Content-Type', '')
+                            logger.info(f"API响应Content-Type: {content_type}")
                             if 'image' in content_type:
                                 # 对于图片，返回图片URL
                                 return {"image_url": url}
                             else:
-                                return {"text": await response.text()}
+                                text_data = await response.text()
+                                logger.info(f"API返回文本数据: {text_data[:100]}...")
+                                # 特殊处理美腿API，可能返回直接的图片URL
+                                if 'http' in text_data and ('.jpg' in text_data or '.png' in text_data or '.gif' in text_data):
+                                    return {"image_url": text_data.strip()}
+                                return {"text": text_data}
                     else:
                         return {"error": f"API请求失败，状态码：{response.status}"}
-        except Exception as e:
-            logger.error(f"API请求异常: {e}")
-            return {"error": f"请求异常: {str(e)}"}
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"API请求异常: {e}，第{attempt+1}次重试...")
+                    import asyncio
+                    await asyncio.sleep(retry_delay * (2 ** attempt))  # 指数退避
+                    continue
+                else:
+                    logger.error(f"API请求异常: {e}")
+                    return {"error": f"请求异常: {str(e)}"}
+            except Exception as e:
+                logger.error(f"API请求未知异常: {e}")
+                return {"error": f"请求异常: {str(e)}"}
 
     async def handle_api_request(self, event: AstrMessageEvent, api_name):
         """处理API请求"""
@@ -165,25 +206,25 @@ class KekeApiCollectionPlugin(Star):
 
 
 
-    @filter.command("帮助")
-    async def help(self, event: AstrMessageEvent):
-        """查看所有可用指令"""
+    def _generate_help_text(self):
+        """生成帮助文本"""
         help_message = "【柯柯API集合】可用指令：\n"
         for command in self.api_map.keys():
             help_message += f"- {command}\n"
         help_message += "- 设备信息\n"
         help_message += "\n发送以上指令即可调用对应API获取内容"
+        return help_message
+
+    @filter.command("帮助")
+    async def help(self, event: AstrMessageEvent):
+        """查看所有可用指令"""
+        help_message = self._generate_help_text()
         yield event.plain_result(help_message)
 
     @filter.command("菜单")
     async def menu(self, event: AstrMessageEvent):
         """查看所有可用指令"""
-        # 复用help方法的逻辑
-        help_message = "【柯柯API集合】可用指令：\n"
-        for command in self.api_map.keys():
-            help_message += f"- {command}\n"
-        help_message += "- 设备信息\n"
-        help_message += "\n发送以上指令即可调用对应API获取内容"
+        help_message = self._generate_help_text()
         yield event.plain_result(help_message)
 
     @filter.command("设备信息")
@@ -195,11 +236,11 @@ class KekeApiCollectionPlugin(Star):
             info.append("**【服务器详细信息】**")
             info.append("")
             
-            # 系统信息
+            # 系统信息 - 脱敏处理
             info.append("**系统信息**")
-            info.append(f"- 操作系统: {platform.system()} {platform.release()} {platform.version()}")
+            info.append(f"- 操作系统: {platform.system()} {platform.release()}")  # 隐藏具体版本号
             info.append(f"- 架构: {platform.architecture()[0]}")
-            info.append(f"- 机器名: {platform.node()}")
+            info.append("- 机器名: [已隐藏]")  # 隐藏主机名
             info.append("")
             
             # Python信息
@@ -241,32 +282,19 @@ class KekeApiCollectionPlugin(Star):
             info.append(f"- 使用率: {disk_usage}%")
             info.append("")
             
-            # 网络信息
-            net_io = psutil.net_io_counters()
-            bytes_sent = round(net_io.bytes_sent / (1024**2), 2)
-            bytes_recv = round(net_io.bytes_recv / (1024**2), 2)
+            # 网络信息 - 脱敏处理
             info.append("**网络信息**")
-            info.append(f"- 已发送流量: {bytes_sent} MB")
-            info.append(f"- 已接收流量: {bytes_recv} MB")
+            info.append("- 网络状态: 正常")  # 隐藏具体流量数据
             info.append("")
             
-            # 进程信息
-            process_count = len(psutil.pids())
+            # 进程信息 - 脱敏处理
             info.append("**进程信息**")
-            info.append(f"- 当前进程数: {process_count}")
+            info.append("- 进程状态: 正常")  # 隐藏具体进程数
             info.append("")
             
-            # 环境信息
+            # 环境信息 - 脱敏处理
             info.append("**环境信息**")
-            # 不显示具体路径，只显示目录级别
-            cwd = os.getcwd()
-            # 只显示最后两级目录
-            path_parts = cwd.split(os.sep)
-            if len(path_parts) >= 2:
-                safe_cwd = os.sep.join(path_parts[-2:])
-                info.append(f"- 当前工作目录: ...\\{safe_cwd}")
-            else:
-                info.append(f"- 当前工作目录: {cwd}")
+            info.append("- 工作目录: [已隐藏]")  # 完全隐藏工作目录
             
             # 组合信息
             info_message = "\n".join(info)
@@ -277,4 +305,7 @@ class KekeApiCollectionPlugin(Star):
 
     async def terminate(self):
         """插件销毁方法"""
+        # 关闭ClientSession
+        if self.session:
+            await self.session.close()
         logger.info("柯柯API集合插件已销毁")
