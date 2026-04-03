@@ -9,7 +9,7 @@ import os
 import psutil
 import asyncio
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿", "1.4.1")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝", "1.4.2")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -21,8 +21,7 @@ class KekeApiCollectionPlugin(Star):
             "美女": "https://openapi.dwo.cc/api/pc_mn",
             "图片": "https://openapi.dwo.cc/api/yrcmcx",
             "白丝": "https://api.pldduck.com/api/baisi",
-            "黑丝": "https://api.pldduck.com/api/heisi",
-            "美腿": "https://sbtxqq.com/api/tui.php"
+            "黑丝": "https://api.pldduck.com/api/heisi"
         }
         # 初始化ClientSession
         self.session = None
@@ -76,18 +75,7 @@ class KekeApiCollectionPlugin(Star):
                             else:
                                 text_data = await response.text()
                                 logger.info(f"API返回文本数据: {text_data[:100]}...")
-                                # 特殊处理美腿API
-                                if 'sbtxqq.com/api/tui.php' in url:
-                                    # 检查是否返回了HTML内容
-                                    if '<script' in text_data or '<html' in text_data:
-                                        # 美腿API返回了HTML，可能是反爬虫页面
-                                        logger.warning("美腿API返回了HTML内容，可能是反爬虫页面")
-                                        return {"error": "API返回了反爬虫页面，请稍后再试"}
-                                    # 尝试提取图片URL
-                                    if 'http' in text_data and ('.jpg' in text_data or '.png' in text_data or '.gif' in text_data):
-                                        return {"image_url": text_data.strip()}
-                                    return {"error": "API返回了无效的响应"}
-                                # 处理其他API的文本响应
+                                # 处理文本响应中的图片URL
                                 if 'http' in text_data and ('.jpg' in text_data or '.png' in text_data or '.gif' in text_data):
                                     return {"image_url": text_data.strip()}
                                 return {"text": text_data}
@@ -190,13 +178,6 @@ class KekeApiCollectionPlugin(Star):
         """获取黑丝图片"""
         result = await self.fetch_api(self.api_map["黑丝"])
         async for response in self.handle_api_response(event, "黑丝", result):
-            yield response
-
-    @filter.command("美腿")
-    async def get_meitui(self, event: AstrMessageEvent):
-        """获取美腿图片"""
-        result = await self.fetch_api(self.api_map["美腿"])
-        async for response in self.handle_api_response(event, "美腿", result):
             yield response
 
     def _generate_help_text(self):

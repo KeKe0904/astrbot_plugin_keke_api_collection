@@ -22,7 +22,6 @@
 | 图片 | https://openapi.dwo.cc/api/yrcmcx | 获取随机图片 |
 | 白丝 | https://api.pldduck.com/api/baisi | 获取白丝图片 |
 | 黑丝 | https://api.pldduck.com/api/heisi | 获取黑丝图片 |
-| 美腿 | https://sbtxqq.com/api/tui.php | 获取美腿图片 |
 
 ## 使用方法
 
@@ -44,11 +43,14 @@
 
 ## 版本信息
 
-- 版本：1.4.1
+- 版本：1.4.2
 - 作者：落梦陳
 - 仓库地址：https://github.com/KeKe0904/astrbot_plugin_keke_api_collection
 
 ## 更新日志
+
+### v1.4.2
+- 移除美腿指令和API：由于API不稳定且存在反爬虫机制，移除该指令
 
 ### v1.4.1
 - 修复美腿指令：添加对HTML响应的检测和处理，解决返回`<script src="/_guard/html.js?js=slider_html"></script>`错误的问题
