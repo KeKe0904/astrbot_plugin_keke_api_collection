@@ -23,7 +23,7 @@
 | 白丝 | https://api.pldduck.com/api/baisi | 获取白丝图片 |
 | 黑丝 | https://api.pldduck.com/api/heisi | 获取黑丝图片 |
 | 美腿 | https://sbtxqq.com/api/tui.php | 获取美腿图片 |
-| 今日老婆 | https://api.pearktrue.cn/api/today_wife?id=10001 | 获取今日二次元老婆 |
+| 纯情女高 | https://api.317ak.cn/api/sp/cqng?ckey=8TPDJ0GGK4AG4RFWSSSG | 获取纯情女高图片 |
 
 ## 使用方法
 
@@ -53,7 +53,8 @@
 ## 更新日志
 
 ### v1.2.1
-- 新增"今日老婆"指令，随机返回一个今日的二次元老婆图片
+- 新增"纯情女高"API指令，获取相关图片
+- 优化API请求处理，支持不同API的请求方式
 
 ### v1.2.0
 - 移除敏感内容：删除"R18"和"色图"指令
