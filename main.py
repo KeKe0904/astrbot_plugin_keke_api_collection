@@ -9,7 +9,7 @@ import os
 import sys
 import psutil
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、纯情女高", "1.2.1")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和视频API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、纯情女高", "1.2.2")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -55,8 +55,14 @@ class KekeApiCollectionPlugin(Star):
                             try:
                                 return await response.json()
                             except:
-                                # 如果不是JSON，返回文本
-                                return {"text": await response.text()}
+                                # 检查是否是视频文件
+                                content_type = response.headers.get('Content-Type', '')
+                                if 'video' in content_type:
+                                    # 对于视频，返回视频URL
+                                    return {"video_url": url}
+                                else:
+                                    # 如果不是JSON和视频，返回文本
+                                    return {"text": await response.text()}
                         else:
                             return {"error": f"API请求失败，状态码：{response.status}"}
                 else:
@@ -100,6 +106,13 @@ class KekeApiCollectionPlugin(Star):
             except Exception as e:
                 logger.error(f"发送图片失败: {e}")
                 yield event.plain_result(f"获取{api_name}成功，但发送图片失败")
+        elif "video_url" in result:
+            # 发送视频
+            try:
+                yield event.video_result(result["video_url"])
+            except Exception as e:
+                logger.error(f"发送视频失败: {e}")
+                yield event.plain_result(f"获取{api_name}成功，但发送视频失败")
         elif "text" in result:
             # 发送文本
             yield event.plain_result(result["text"])
@@ -111,7 +124,7 @@ class KekeApiCollectionPlugin(Star):
                 if isinstance(data, str):
                     yield event.plain_result(data)
                 elif isinstance(data, dict):
-                    # 尝试提取文本或图片
+                    # 尝试提取文本、图片或视频
                     if "text" in data:
                         yield event.plain_result(data["text"])
                     elif "image" in data or "img" in data:
@@ -121,6 +134,13 @@ class KekeApiCollectionPlugin(Star):
                         except Exception as e:
                             logger.error(f"发送图片失败: {e}")
                             yield event.plain_result(f"获取{api_name}成功，但发送图片失败")
+                    elif "video" in data:
+                        video_url = data.get("video")
+                        try:
+                            yield event.video_result(video_url)
+                        except Exception as e:
+                            logger.error(f"发送视频失败: {e}")
+                            yield event.plain_result(f"获取{api_name}成功，但发送视频失败")
                     else:
                         # 转换为字符串发送
                         yield event.plain_result(str(data))
