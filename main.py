@@ -8,7 +8,7 @@ import os
 import psutil
 import asyncio
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝", "1.5.0")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝", "1.6.0")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -22,8 +22,9 @@ class KekeApiCollectionPlugin(Star):
             "白丝": "https://api.pldduck.com/api/baisi",
             "黑丝": "https://api.pldduck.com/api/heisi"
         }
-        # 初始化ClientSession
+        # 初始化ClientSession和锁
         self.session = None
+        self.session_lock = asyncio.Lock()
 
     @filter.on_astrbot_loaded()
     async def on_loaded(self):
@@ -40,20 +41,33 @@ class KekeApiCollectionPlugin(Star):
         
         for attempt in range(max_retries):
             try:
-                # 使用在on_loaded中初始化的ClientSession
-                if not self.session:
-                    logger.error("ClientSession未初始化，创建临时实例")
-                    self.session = aiohttp.ClientSession()
+                # 确保ClientSession已初始化且未关闭
+                async with self.session_lock:
+                    if self.session is None or self.session.closed:
+                        if self.session is not None and self.session.closed:
+                            logger.info("ClientSession已关闭，重新创建")
+                        else:
+                            logger.info("ClientSession未初始化，创建实例")
+                        self.session = aiohttp.ClientSession()
                 
                 async with self.session.get(url, timeout=10) as response:
                     logger.info(f"API请求状态码: {response.status}")
-                    logger.info(f"API响应头: {dict(response.headers)}")
+                    # 只记录Content-Type，避免记录完整响应头
+                    content_type = response.headers.get('Content-Type', '')
+                    logger.info(f"API响应Content-Type: {content_type}")
                     
-                    # 对于5xx错误，进行重试
-                    if 500 <= response.status < 600:
+                    # 对于5xx和429错误，进行重试
+                    if 500 <= response.status < 600 or response.status == 429:
                         if attempt < max_retries - 1:
                             logger.warning(f"API返回{response.status}错误，第{attempt+1}次重试...")
-                            await asyncio.sleep(retry_delay * (2 ** attempt))  # 指数退避
+                            # 尝试从Retry-After头获取等待时间
+                            retry_after = response.headers.get('Retry-After')
+                            if retry_after and retry_after.isdigit():
+                                wait_time = int(retry_after)
+                                logger.info(f"根据Retry-After头，等待{wait_time}秒后重试")
+                                await asyncio.sleep(wait_time)
+                            else:
+                                await asyncio.sleep(retry_delay * (2 ** attempt))  # 指数退避
                             continue
                         else:
                             return {"error": f"API请求失败，状态码：{response.status}"}
@@ -62,19 +76,19 @@ class KekeApiCollectionPlugin(Star):
                         # 尝试解析JSON响应
                         try:
                             json_data = await response.json()
-                            logger.info(f"API返回JSON数据: {json_data}")
+                            # 只记录JSON响应的类型和键，不记录具体值
+                            logger.info(f"API返回JSON数据，包含键: {list(json_data.keys())}")
                             return json_data
                         except (aiohttp.ContentTypeError, json.JSONDecodeError) as json_error:
-                            logger.info(f"JSON解析失败: {json_error}")
+                            logger.debug(f"JSON解析失败: {json_error}")
                             # 如果不是JSON，返回文本或二进制数据
-                            content_type = response.headers.get('Content-Type', '')
-                            logger.info(f"API响应Content-Type: {content_type}")
                             if 'image' in content_type.lower():
                                 # 对于图片，返回图片URL
                                 return {"image_url": url}
                             else:
                                 text_data = await response.text()
-                                logger.info(f"API返回文本数据: {text_data[:100]}...")
+                                # 只记录文本长度，不记录具体内容
+                                logger.info(f"API返回文本数据，长度: {len(text_data)}")
                                 # 处理文本响应中的图片URL
                                 if 'http' in text_data and ('.jpg' in text_data or '.png' in text_data or '.gif' in text_data):
                                     return {"image_url": text_data.strip()}
@@ -123,62 +137,46 @@ class KekeApiCollectionPlugin(Star):
                             logger.error(f"发送图片失败: {e}")
                             yield event.plain_result(f"获取{api_name}成功，但发送图片失败")
                     else:
-                        yield event.plain_result(str(data))
+                        # 提供统一的解析失败提示
+                        logger.debug(f"无法解析API响应: {data}")
+                        yield event.plain_result(f"获取{api_name}成功，但无法解析响应数据")
                 else:
-                    yield event.plain_result(str(result))
+                    # 提供统一的解析失败提示
+                    logger.debug(f"无法解析API响应: {result}")
+                    yield event.plain_result(f"获取{api_name}成功，但无法解析响应数据")
             else:
-                yield event.plain_result(str(result))
+                # 提供统一的解析失败提示
+                logger.debug(f"无法解析API响应: {result}")
+                yield event.plain_result(f"获取{api_name}成功，但无法解析响应数据")
         else:
-            yield event.plain_result(str(result))
+            # 提供统一的解析失败提示
+            logger.debug(f"无法解析API响应: {result}")
+            yield event.plain_result(f"获取{api_name}成功，但无法解析响应数据")
 
-    @filter.command("摸鱼日历")
-    async def moyu_calendar(self, event: AstrMessageEvent):
-        """获取摸鱼日历"""
-        result = await self.fetch_api(self.api_map["摸鱼日历"])
-        async for response in self.handle_api_response(event, "摸鱼日历", result):
-            yield response
+    # 统一处理API指令的方法
+    async def handle_api_command(self, event: AstrMessageEvent, command: str):
+        """统一处理API指令"""
+        if command in self.api_map:
+            result = await self.fetch_api(self.api_map[command])
+            async for response in self.handle_api_response(event, command, result):
+                yield response
 
-    @filter.command("文案")
-    async def get_copywriting(self, event: AstrMessageEvent):
-        """获取文案"""
-        result = await self.fetch_api(self.api_map["文案"])
-        async for response in self.handle_api_response(event, "文案", result):
-            yield response
-
-    @filter.command("舔狗日记")
-    async def get_tdog(self, event: AstrMessageEvent):
-        """获取舔狗日记"""
-        result = await self.fetch_api(self.api_map["舔狗日记"])
-        async for response in self.handle_api_response(event, "舔狗日记", result):
-            yield response
-
-    @filter.command("美女")
-    async def get_beauty(self, event: AstrMessageEvent):
-        """获取美女图片"""
-        result = await self.fetch_api(self.api_map["美女"])
-        async for response in self.handle_api_response(event, "美女", result):
-            yield response
-
-    @filter.command("图片")
-    async def get_image(self, event: AstrMessageEvent):
-        """获取随机图片"""
-        result = await self.fetch_api(self.api_map["图片"])
-        async for response in self.handle_api_response(event, "图片", result):
-            yield response
-
-    @filter.command("白丝")
-    async def get_baisi(self, event: AstrMessageEvent):
-        """获取白丝图片"""
-        result = await self.fetch_api(self.api_map["白丝"])
-        async for response in self.handle_api_response(event, "白丝", result):
-            yield response
-
-    @filter.command("黑丝")
-    async def get_heisi(self, event: AstrMessageEvent):
-        """获取黑丝图片"""
-        result = await self.fetch_api(self.api_map["黑丝"])
-        async for response in self.handle_api_response(event, "黑丝", result):
-            yield response
+    # 动态注册所有API指令
+    def __post_init__(self):
+        """初始化后动态注册所有API指令"""
+        for command in self.api_map.keys():
+            # 创建指令处理函数
+            async def create_handler(cmd):
+                async def handler(event: AstrMessageEvent):
+                    """处理{cmd}指令"""
+                    async for response in self.handle_api_command(event, cmd):
+                        yield response
+                return handler
+            
+            # 注册指令
+            handler = create_handler(command)
+            decorated_handler = filter.command(command)(handler)
+            setattr(self, f"handle_{command}", decorated_handler)
 
     def _generate_help_text(self):
         """生成帮助文本"""
@@ -203,90 +201,68 @@ class KekeApiCollectionPlugin(Star):
 
     @filter.command("设备信息")
     async def device_info(self, event: AstrMessageEvent):
-        """查看服务器详细信息"""
+        """查看服务器基本信息"""
         try:
-            # 收集系统信息
+            # 收集系统信息（简化版）
             info = []
-            info.append("**【服务器详细信息】**")
+            info.append("**【服务器基本信息】**")
             info.append("")
             
-            # 系统信息 - 脱敏处理
+            # 系统信息
             info.append("**系统信息**")
-            info.append(f"- 操作系统: {platform.system()} {platform.release()}")  # 隐藏具体版本号
+            info.append(f"- 操作系统: {platform.system()}")  # 只显示系统类型
             info.append(f"- 架构: {platform.architecture()[0]}")
-            info.append("- 机器名: [已隐藏]")  # 隐藏主机名
             info.append("")
             
             # Python信息
             info.append("**Python信息**")
-            info.append(f"- Python版本: {platform.python_version()}")
+            # 只显示Python主版本
+            python_version = platform.python_version()
+            main_version = ".".join(python_version.split(".")[:2])
+            info.append(f"- Python版本: {main_version}.*")
             info.append("")
             
-            # CPU信息
+            # CPU信息（简化）
             cpu_count = psutil.cpu_count(logical=True)
-            # 使用run_in_executor避免阻塞事件循环
-            import asyncio
-            loop = asyncio.get_running_loop()
-            cpu_usage = await loop.run_in_executor(None, lambda: psutil.cpu_percent(interval=1))
             info.append("**CPU信息**")
             info.append(f"- 核心数: {cpu_count}")
-            info.append(f"- 使用率: {cpu_usage}%")
             info.append("")
             
-            # 内存信息
+            # 内存信息（简化）
             memory = psutil.virtual_memory()
             total_memory = round(memory.total / (1024**3), 2)
-            used_memory = round(memory.used / (1024**3), 2)
-            free_memory = round(memory.free / (1024**3), 2)
-            memory_usage = memory.percent
             info.append("**内存信息**")
             info.append(f"- 总量: {total_memory} GB")
-            info.append(f"- 已用: {used_memory} GB")
-            info.append(f"- 可用: {free_memory} GB")
-            info.append(f"- 使用率: {memory_usage}%")
             info.append("")
             
-            # 磁盘信息 - 跨平台兼容
+            # 磁盘信息（简化）
+            info.append("**磁盘信息**")
             try:
                 # 使用跨平台的根目录路径
-                import os
                 root_path = os.path.abspath(os.sep)
                 disk = psutil.disk_usage(root_path)
                 total_disk = round(disk.total / (1024**3), 2)
-                used_disk = round(disk.used / (1024**3), 2)
-                free_disk = round(disk.free / (1024**3), 2)
-                disk_usage = disk.percent
-                info.append("**磁盘信息**")
                 info.append(f"- 总量: {total_disk} GB")
-                info.append(f"- 已用: {used_disk} GB")
-                info.append(f"- 可用: {free_disk} GB")
-                info.append(f"- 使用率: {disk_usage}%")
             except Exception as e:
                 logger.error(f"获取磁盘信息失败: {e}")
-                info.append("**磁盘信息**")
                 info.append("- 状态: 无法获取")
             info.append("")
             
-            # 网络信息 - 脱敏处理
+            # 网络信息（简化）
             info.append("**网络信息**")
-            info.append("- 网络状态: 正常")  # 隐藏具体流量数据
+            info.append("- 网络状态: 正常")
             info.append("")
             
-            # 进程信息 - 脱敏处理
+            # 进程信息（简化）
             info.append("**进程信息**")
-            info.append("- 进程状态: 正常")  # 隐藏具体进程数
-            info.append("")
+            info.append("- 进程状态: 正常")
             
-            # 环境信息 - 脱敏处理
-            info.append("**环境信息**")
-            info.append("- 工作目录: [已隐藏]")  # 完全隐藏工作目录
-            
-            # 组合信息
+            # 生成最终信息
             info_message = "\n".join(info)
             yield event.plain_result(info_message)
         except Exception as e:
             logger.error(f"获取设备信息失败: {e}")
-            yield event.plain_result(f"获取设备信息失败: {str(e)}")
+            yield event.plain_result("获取设备信息失败，请稍后再试")
 
     async def terminate(self):
         """插件销毁方法"""
