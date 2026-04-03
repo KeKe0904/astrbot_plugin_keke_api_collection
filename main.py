@@ -8,7 +8,7 @@ import os
 import psutil
 import asyncio
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝", "1.6.0")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝", "1.6.1")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -153,30 +153,54 @@ class KekeApiCollectionPlugin(Star):
             logger.debug(f"无法解析API响应: {result}")
             yield event.plain_result(f"获取{api_name}成功，但无法解析响应数据")
 
-    # 统一处理API指令的方法
-    async def handle_api_command(self, event: AstrMessageEvent, command: str):
-        """统一处理API指令"""
-        if command in self.api_map:
-            result = await self.fetch_api(self.api_map[command])
-            async for response in self.handle_api_response(event, command, result):
-                yield response
+    @filter.command("摸鱼日历")
+    async def moyu_calendar(self, event: AstrMessageEvent):
+        """获取摸鱼日历"""
+        result = await self.fetch_api(self.api_map["摸鱼日历"])
+        async for response in self.handle_api_response(event, "摸鱼日历", result):
+            yield response
 
-    # 动态注册所有API指令
-    def __post_init__(self):
-        """初始化后动态注册所有API指令"""
-        for command in self.api_map.keys():
-            # 创建指令处理函数
-            async def create_handler(cmd):
-                async def handler(event: AstrMessageEvent):
-                    """处理{cmd}指令"""
-                    async for response in self.handle_api_command(event, cmd):
-                        yield response
-                return handler
-            
-            # 注册指令
-            handler = create_handler(command)
-            decorated_handler = filter.command(command)(handler)
-            setattr(self, f"handle_{command}", decorated_handler)
+    @filter.command("文案")
+    async def get_copywriting(self, event: AstrMessageEvent):
+        """获取文案"""
+        result = await self.fetch_api(self.api_map["文案"])
+        async for response in self.handle_api_response(event, "文案", result):
+            yield response
+
+    @filter.command("舔狗日记")
+    async def get_tdog(self, event: AstrMessageEvent):
+        """获取舔狗日记"""
+        result = await self.fetch_api(self.api_map["舔狗日记"])
+        async for response in self.handle_api_response(event, "舔狗日记", result):
+            yield response
+
+    @filter.command("美女")
+    async def get_beauty(self, event: AstrMessageEvent):
+        """获取美女图片"""
+        result = await self.fetch_api(self.api_map["美女"])
+        async for response in self.handle_api_response(event, "美女", result):
+            yield response
+
+    @filter.command("图片")
+    async def get_image(self, event: AstrMessageEvent):
+        """获取随机图片"""
+        result = await self.fetch_api(self.api_map["图片"])
+        async for response in self.handle_api_response(event, "图片", result):
+            yield response
+
+    @filter.command("白丝")
+    async def get_baisi(self, event: AstrMessageEvent):
+        """获取白丝图片"""
+        result = await self.fetch_api(self.api_map["白丝"])
+        async for response in self.handle_api_response(event, "白丝", result):
+            yield response
+
+    @filter.command("黑丝")
+    async def get_heisi(self, event: AstrMessageEvent):
+        """获取黑丝图片"""
+        result = await self.fetch_api(self.api_map["黑丝"])
+        async for response in self.handle_api_response(event, "黑丝", result):
+            yield response
 
     def _generate_help_text(self):
         """生成帮助文本"""

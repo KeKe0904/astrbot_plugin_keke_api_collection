@@ -43,11 +43,14 @@
 
 ## 版本信息
 
-- 版本：1.6.0
+- 版本：1.6.1
 - 作者：落梦陳
 - 仓库地址：https://github.com/KeKe0904/astrbot_plugin_keke_api_collection
 
 ## 更新日志
+
+### v1.6.1
+- 代码优化：将动态注册改回明确的指令注册方式，确保AstrBot能够正确识别和触发指令
 
 ### v1.6.0
 - 安全优化：修复ClientSession并发初始化竞态问题，使用asyncio.Lock保护
