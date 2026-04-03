@@ -3,24 +3,34 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 import aiohttp
 import json
+import base64
 
 @register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、R18、色图", "1.0.0")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-        # API映射关系
-        self.api_map = {
-            "摸鱼日历": "https://openapi.dwo.cc/api/moyuya",
-            "文案": "https://openapi.dwo.cc/api/yi",
-            "舔狗日记": "https://openapi.dwo.cc/api/tdog",
-            "美女": "https://openapi.dwo.cc/api/pc_mn",
-            "图片": "https://openapi.dwo.cc/api/yrcmcx",
-            "白丝": "https://api.pldduck.com/api/baisi",
-            "黑丝": "https://api.pldduck.com/api/heisi",
-            "美腿": "https://sbtxqq.com/api/tui.php",
-            "R18": "https://rand-r18.mossia.top",
-            "色图": "https://rand-x.mossia.top"
+        # Base64编码的API映射关系
+        self.encoded_api_map = {
+            "摸鱼日历": "aHR0cHM6Ly9vcGVuYXBpLmR3by5jYy9hcGkvbW95dXlh",
+            "文案": "aHR0cHM6Ly9vcGVuYXBpLmR3by5jYy9hcGkveWk=",
+            "舔狗日记": "aHR0cHM6Ly9vcGVuYXBpLmR3by5jYy9hcGkvdGRvZw==",
+            "美女": "aHR0cHM6Ly9vcGVuYXBpLmR3by5jYy9hcGkvcGMtbW4=",
+            "图片": "aHR0cHM6Ly9vcGVuYXBpLmR3by5jYy9hcGkveXJjbWN4",
+            "白丝": "aHR0cHM6Ly9hcGkucGxkZHVjay5jb20vYXBpL2JhaXNp",
+            "黑丝": "aHR0cHM6Ly9hcGkucGxkZHVjay5jb20vYXBpL2hlaXNp",
+            "美腿": "aHR0cHM6Ly9zYnR4cXEuY29tL2FwaS90dWkucGhw",
+            "R18": "aHR0cHM6Ly9yYW5kLXIxOC5tb3NzaWEudG9w",
+            "色图": "aHR0cHM6Ly9yYW5kLXgubW9zc2lhLnRvcA=="
         }
+        # 解码后的API映射
+        self.api_map = {}
+        for key, encoded_url in self.encoded_api_map.items():
+            try:
+                decoded_url = base64.b64decode(encoded_url).decode('utf-8')
+                self.api_map[key] = decoded_url
+            except Exception as e:
+                logger.error(f"解码API地址失败: {e}")
+                self.api_map[key] = ""
 
     async def initialize(self):
         """插件初始化方法"""
