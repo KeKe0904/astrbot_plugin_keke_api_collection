@@ -23,8 +23,7 @@
 | 白丝 | https://api.pldduck.com/api/baisi | 获取白丝图片 |
 | 黑丝 | https://api.pldduck.com/api/heisi | 获取黑丝图片 |
 | 美腿 | https://sbtxqq.com/api/tui.php | 获取美腿图片 |
-| R18 | https://rand-r18.mossia.top | 获取R18图片 |
-| 色图 | https://rand-x.mossia.top | 获取色图 |
+| 今日老婆 | https://api.pearktrue.cn/api/today_wife?id=10001 | 获取今日二次元老婆 |
 
 ## 使用方法
 
@@ -47,11 +46,19 @@
 
 ## 版本信息
 
-- 版本：1.1.2
+- 版本：1.2.1
 - 作者：落梦陳
 - 仓库地址：https://github.com/KeKe0904/astrbot_plugin_keke_api_collection
 
 ## 更新日志
+
+### v1.2.1
+- 新增"今日老婆"指令，随机返回一个今日的二次元老婆图片
+
+### v1.2.0
+- 移除敏感内容：删除"R18"和"色图"指令
+- 优化设备信息显示：隐藏具体路径，保护隐私
+- 提升插件安全性和合规性
 
 ### v1.1.2
 - 新增"设备信息"指令，返回服务器详细信息，包括系统、CPU、内存、磁盘、网络等信息

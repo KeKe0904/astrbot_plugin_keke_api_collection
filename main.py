@@ -9,7 +9,7 @@ import os
 import sys
 import psutil
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、R18、色图", "1.1.2")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、今日老婆", "1.2.1")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -23,8 +23,7 @@ class KekeApiCollectionPlugin(Star):
             "白丝": "aHR0cHM6Ly9hcGkucGxkZHVjay5jb20vYXBpL2JhaXNp",
             "黑丝": "aHR0cHM6Ly9hcGkucGxkZHVjay5jb20vYXBpL2hlaXNp",
             "美腿": "aHR0cHM6Ly9zYnR4cXEuY29tL2FwaS90dWkucGhw",
-            "R18": "aHR0cHM6Ly9yYW5kLXIxOC5tb3NzaWEudG9w",
-            "色图": "aHR0cHM6Ly9yYW5kLXgubW9zc2lhLnRvcA=="
+            "今日老婆": "aHR0cHM6Ly9hcGkucGVhcmt0cnVlLmNuL2FwaS90b2RheV93aWZlP2lkPTEwMDAx"
         }
         # 解码后的API映射
         self.api_map = {}
@@ -165,17 +164,13 @@ class KekeApiCollectionPlugin(Star):
         async for result in self.handle_api_request(event, "美腿"):
             yield result
 
-    @filter.command("R18")
-    async def get_r18(self, event: AstrMessageEvent):
-        """获取R18图片"""
-        async for result in self.handle_api_request(event, "R18"):
+    @filter.command("今日老婆")
+    async def get_today_wife(self, event: AstrMessageEvent):
+        """获取今日二次元老婆"""
+        async for result in self.handle_api_request(event, "今日老婆"):
             yield result
 
-    @filter.command("色图")
-    async def get_setu(self, event: AstrMessageEvent):
-        """获取色图"""
-        async for result in self.handle_api_request(event, "色图"):
-            yield result
+
 
     @filter.command("帮助")
     async def help(self, event: AstrMessageEvent):
@@ -270,7 +265,15 @@ class KekeApiCollectionPlugin(Star):
             
             # 环境信息
             info.append("**环境信息**")
-            info.append(f"- 当前工作目录: {os.getcwd()}")
+            # 不显示具体路径，只显示目录级别
+            cwd = os.getcwd()
+            # 只显示最后两级目录
+            path_parts = cwd.split(os.sep)
+            if len(path_parts) >= 2:
+                safe_cwd = os.sep.join(path_parts[-2:])
+                info.append(f"- 当前工作目录: ...\\{safe_cwd}")
+            else:
+                info.append(f"- 当前工作目录: {cwd}")
             
             # 组合信息
             info_message = "\n".join(info)
