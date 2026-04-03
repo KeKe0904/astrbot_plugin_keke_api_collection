@@ -44,11 +44,23 @@
 
 ## 版本信息
 
-- 版本：1.3.1
+- 版本：1.4.1
 - 作者：落梦陳
 - 仓库地址：https://github.com/KeKe0904/astrbot_plugin_keke_api_collection
 
 ## 更新日志
+
+### v1.4.1
+- 修复美腿指令：添加对HTML响应的检测和处理，解决返回`<script src="/_guard/html.js?js=slider_html"></script>`错误的问题
+- 增强美腿API错误处理：当API返回反爬虫页面时，提供友好的错误提示
+
+### v1.4.0
+- 重构指令注册方式：使用动态注册，减少重复代码，使代码更加优雅
+- 移除无意义的Base64编码：直接使用明文API地址，提高代码可读性
+- 修复跨平台兼容性问题：使用os.path.abspath(os.sep)获取根目录，解决Windows平台上的路径问题
+- 优化插件初始化：使用@filter.on_astrbot_loaded()钩子，确保ClientSession在插件加载时正确创建
+- 解决并发状态竞争问题：通过插件加载时初始化ClientSession，避免多个并发请求创建多个Session
+- 简化代码结构：移除handle_api_request中间层，直接在指令处理函数中调用fetch_api
 
 ### v1.3.1
 - 修复asyncio导入问题：添加全局asyncio导入，移除方法内的局部导入，解决"cannot access local variable 'asyncio'"错误
