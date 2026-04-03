@@ -23,7 +23,6 @@
 | 白丝 | https://api.pldduck.com/api/baisi | 获取白丝图片 |
 | 黑丝 | https://api.pldduck.com/api/heisi | 获取黑丝图片 |
 | 美腿 | https://sbtxqq.com/api/tui.php | 获取美腿图片 |
-| 纯情女高 | https://api.317ak.cn/api/sp/cqng?ckey=8TPDJ0GGK4AG4RFWSSSG | 获取纯情女高图片 |
 
 ## 使用方法
 
@@ -34,7 +33,6 @@
 ## 注意事项
 
 - 部分API可能存在访问限制或不稳定情况
-- 某些API（如R18、色图）可能包含敏感内容，请谨慎使用
 - 插件使用了第三方API，请注意遵守相关服务的使用条款
 
 ## 技术实现
@@ -46,19 +44,11 @@
 
 ## 版本信息
 
-- 版本：1.2.2
+- 版本：1.2.0
 - 作者：落梦陳
 - 仓库地址：https://github.com/KeKe0904/astrbot_plugin_keke_api_collection
 
 ## 更新日志
-
-### v1.2.2
-- 优化"纯情女高"API处理，支持视频文件返回
-- 增强响应处理能力，添加视频发送功能
-
-### v1.2.1
-- 新增"纯情女高"API指令，获取相关内容
-- 优化API请求处理，支持不同API的请求方式
 
 ### v1.2.0
 - 移除敏感内容：删除"R18"和"色图"指令

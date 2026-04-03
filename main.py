@@ -9,7 +9,7 @@ import os
 import sys
 import psutil
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和视频API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、纯情女高", "1.2.2")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿", "1.2.0")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -22,8 +22,7 @@ class KekeApiCollectionPlugin(Star):
             "图片": "aHR0cHM6Ly9vcGVuYXBpLmR3by5jYy9hcGkveXJjbWN4",
             "白丝": "aHR0cHM6Ly9hcGkucGxkZHVjay5jb20vYXBpL2JhaXNp",
             "黑丝": "aHR0cHM6Ly9hcGkucGxkZHVjay5jb20vYXBpL2hlaXNp",
-            "美腿": "aHR0cHM6Ly9zYnR4cXEuY29tL2FwaS90dWkucGhw",
-            "纯情女高": "aHR0cHM6Ly9hcGkuMzE3YWsuY24vYXBpL3NwL2NxbmdbY2tleT04VFBESjBHR0s0QUc0UkZXc3NzZw=="
+            "美腿": "aHR0cHM6Ly9zYnR4cXEuY29tL2FwaS90dWkucGhw"
         }
         # 解码后的API映射
         self.api_map = {}
@@ -43,45 +42,21 @@ class KekeApiCollectionPlugin(Star):
         """异步获取API数据"""
         try:
             async with aiohttp.ClientSession() as session:
-                # 对于纯情女高API，使用特定的headers和data
-                if "317ak.cn" in url:
-                    headers = {
-                        "Content-Type": "application/none"
-                    }
-                    data = "{}"
-                    async with session.post(url, headers=headers, data=data, timeout=10) as response:
-                        if response.status == 200:
-                            # 尝试解析JSON响应
-                            try:
-                                return await response.json()
-                            except:
-                                # 检查是否是视频文件
-                                content_type = response.headers.get('Content-Type', '')
-                                if 'video' in content_type:
-                                    # 对于视频，返回视频URL
-                                    return {"video_url": url}
-                                else:
-                                    # 如果不是JSON和视频，返回文本
-                                    return {"text": await response.text()}
-                        else:
-                            return {"error": f"API请求失败，状态码：{response.status}"}
-                else:
-                    # 其他API使用GET请求
-                    async with session.get(url, timeout=10) as response:
-                        if response.status == 200:
-                            # 尝试解析JSON响应
-                            try:
-                                return await response.json()
-                            except:
-                                # 如果不是JSON，返回文本或二进制数据
-                                content_type = response.headers.get('Content-Type', '')
-                                if 'image' in content_type:
-                                    # 对于图片，返回图片URL
-                                    return {"image_url": url}
-                                else:
-                                    return {"text": await response.text()}
-                        else:
-                            return {"error": f"API请求失败，状态码：{response.status}"}
+                async with session.get(url, timeout=10) as response:
+                    if response.status == 200:
+                        # 尝试解析JSON响应
+                        try:
+                            return await response.json()
+                        except:
+                            # 如果不是JSON，返回文本或二进制数据
+                            content_type = response.headers.get('Content-Type', '')
+                            if 'image' in content_type:
+                                # 对于图片，返回图片URL
+                                return {"image_url": url}
+                            else:
+                                return {"text": await response.text()}
+                    else:
+                        return {"error": f"API请求失败，状态码：{response.status}"}
         except Exception as e:
             logger.error(f"API请求异常: {e}")
             return {"error": f"请求异常: {str(e)}"}
@@ -106,13 +81,6 @@ class KekeApiCollectionPlugin(Star):
             except Exception as e:
                 logger.error(f"发送图片失败: {e}")
                 yield event.plain_result(f"获取{api_name}成功，但发送图片失败")
-        elif "video_url" in result:
-            # 发送视频
-            try:
-                yield event.video_result(result["video_url"])
-            except Exception as e:
-                logger.error(f"发送视频失败: {e}")
-                yield event.plain_result(f"获取{api_name}成功，但发送视频失败")
         elif "text" in result:
             # 发送文本
             yield event.plain_result(result["text"])
@@ -124,7 +92,7 @@ class KekeApiCollectionPlugin(Star):
                 if isinstance(data, str):
                     yield event.plain_result(data)
                 elif isinstance(data, dict):
-                    # 尝试提取文本、图片或视频
+                    # 尝试提取文本或图片
                     if "text" in data:
                         yield event.plain_result(data["text"])
                     elif "image" in data or "img" in data:
@@ -134,13 +102,6 @@ class KekeApiCollectionPlugin(Star):
                         except Exception as e:
                             logger.error(f"发送图片失败: {e}")
                             yield event.plain_result(f"获取{api_name}成功，但发送图片失败")
-                    elif "video" in data:
-                        video_url = data.get("video")
-                        try:
-                            yield event.video_result(video_url)
-                        except Exception as e:
-                            logger.error(f"发送视频失败: {e}")
-                            yield event.plain_result(f"获取{api_name}成功，但发送视频失败")
                     else:
                         # 转换为字符串发送
                         yield event.plain_result(str(data))
@@ -202,11 +163,7 @@ class KekeApiCollectionPlugin(Star):
         async for result in self.handle_api_request(event, "美腿"):
             yield result
 
-    @filter.command("纯情女高")
-    async def get_cqng(self, event: AstrMessageEvent):
-        """获取纯情女高图片"""
-        async for result in self.handle_api_request(event, "纯情女高"):
-            yield result
+
 
     @filter.command("帮助")
     async def help(self, event: AstrMessageEvent):
