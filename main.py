@@ -8,8 +8,10 @@ import platform
 import os
 import sys
 import psutil
+from PIL import Image, ImageDraw, ImageFont
+import io
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、R18、色图", "1.1.2")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、R18、色图", "1.1.3")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -256,9 +258,50 @@ class KekeApiCollectionPlugin(Star):
             # 环境信息
             info.append(f"当前工作目录: {os.getcwd()}")
             
-            # 组合信息
-            info_message = "\n".join(info)
-            yield event.plain_result(info_message)
+            # 生成图片
+            try:
+                # 创建图片
+                width, height = 600, 600
+                image = Image.new('RGB', (width, height), color=(240, 240, 240))
+                draw = ImageDraw.Draw(image)
+                
+                # 尝试加载字体
+                try:
+                    # 尝试使用系统字体
+                    font = ImageFont.truetype('arial.ttf', 14)
+                except:
+                    # 如果没有arial字体，使用默认字体
+                    font = ImageFont.load_default()
+                
+                # 绘制标题
+                title_font = ImageFont.truetype('arial.ttf', 18) if 'arial.ttf' in os.listdir() else font
+                draw.text((50, 30), "服务器信息", fill=(0, 0, 0), font=title_font)
+                
+                # 绘制信息
+                y_offset = 70
+                line_height = 25
+                for line in info[1:]:  # 跳过标题，因为已经单独绘制
+                    draw.text((50, y_offset), line, fill=(0, 0, 0), font=font)
+                    y_offset += line_height
+                
+                # 将图片转换为字节流
+                img_byte_arr = io.BytesIO()
+                image.save(img_byte_arr, format='PNG')
+                img_byte_arr.seek(0)
+                
+                # 将字节流编码为base64
+                img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+                
+                # 构建data URL
+                img_data_url = f"data:image/png;base64,{img_base64}"
+                
+                # 返回图片
+                yield event.image_result(img_data_url)
+            except Exception as img_error:
+                logger.error(f"生成图片失败: {img_error}")
+                # 如果生成图片失败，返回文本信息
+                info_message = "\n".join(info)
+                yield event.plain_result(info_message)
         except Exception as e:
             logger.error(f"获取设备信息失败: {e}")
             yield event.plain_result(f"获取设备信息失败: {str(e)}")
