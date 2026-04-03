@@ -107,60 +107,97 @@ class KekeApiCollectionPlugin(Star):
 
 
 
-    # 动态注册指令
-    def __post_init__(self):
-        """初始化后动态注册所有API指令"""
-        for command in self.api_map.keys():
-            # 使用lambda函数解决闭包陷阱
-            def register_command(cmd):
-                async def handler(event: AstrMessageEvent):
-                    """获取{cmd}"""
-                    result = await self.fetch_api(self.api_map[cmd])
-                    # 处理响应
-                    if "error" in result:
-                        yield event.plain_result(f"获取{cmd}失败: {result['error']}")
-                    elif "image_url" in result:
-                        # 发送图片
+    async def handle_api_response(self, event: AstrMessageEvent, api_name: str, result: dict):
+        """统一处理API响应"""
+        if "error" in result:
+            yield event.plain_result(f"获取{api_name}失败: {result['error']}")
+        elif "image_url" in result:
+            try:
+                yield event.image_result(result["image_url"])
+            except Exception as e:
+                logger.error(f"发送图片失败: {e}")
+                yield event.plain_result(f"获取{api_name}成功，但发送图片失败")
+        elif "text" in result:
+            yield event.plain_result(result["text"])
+        elif isinstance(result, dict):
+            if "data" in result:
+                data = result["data"]
+                if isinstance(data, str):
+                    yield event.plain_result(data)
+                elif isinstance(data, dict):
+                    if "text" in data:
+                        yield event.plain_result(data["text"])
+                    elif "image" in data or "img" in data:
+                        img_url = data.get("image") or data.get("img")
                         try:
-                            yield event.image_result(result["image_url"])
+                            yield event.image_result(img_url)
                         except Exception as e:
                             logger.error(f"发送图片失败: {e}")
-                            yield event.plain_result(f"获取{cmd}成功，但发送图片失败")
-                    elif "text" in result:
-                        # 发送文本
-                        yield event.plain_result(result["text"])
-                    elif isinstance(result, dict):
-                        # 处理JSON响应
-                        if "data" in result:
-                            data = result["data"]
-                            if isinstance(data, str):
-                                yield event.plain_result(data)
-                            elif isinstance(data, dict):
-                                if "text" in data:
-                                    yield event.plain_result(data["text"])
-                                elif "image" in data or "img" in data:
-                                    img_url = data.get("image") or data.get("img")
-                                    try:
-                                        yield event.image_result(img_url)
-                                    except Exception as e:
-                                        logger.error(f"发送图片失败: {e}")
-                                        yield event.plain_result(f"获取{cmd}成功，但发送图片失败")
-                                else:
-                                    yield event.plain_result(str(data))
-                            else:
-                                yield event.plain_result(str(result))
-                        else:
-                            yield event.plain_result(str(result))
+                            yield event.plain_result(f"获取{api_name}成功，但发送图片失败")
                     else:
-                        yield event.plain_result(str(result))
-                # 注册指令
-                decorated_handler = filter.command(cmd)(handler)
-                setattr(self, f"handle_{cmd}", decorated_handler)
-            
-            # 调用注册函数
-            register_command(command)
+                        yield event.plain_result(str(data))
+                else:
+                    yield event.plain_result(str(result))
+            else:
+                yield event.plain_result(str(result))
+        else:
+            yield event.plain_result(str(result))
 
+    @filter.command("摸鱼日历")
+    async def moyu_calendar(self, event: AstrMessageEvent):
+        """获取摸鱼日历"""
+        result = await self.fetch_api(self.api_map["摸鱼日历"])
+        async for response in self.handle_api_response(event, "摸鱼日历", result):
+            yield response
 
+    @filter.command("文案")
+    async def get_copywriting(self, event: AstrMessageEvent):
+        """获取文案"""
+        result = await self.fetch_api(self.api_map["文案"])
+        async for response in self.handle_api_response(event, "文案", result):
+            yield response
+
+    @filter.command("舔狗日记")
+    async def get_tdog(self, event: AstrMessageEvent):
+        """获取舔狗日记"""
+        result = await self.fetch_api(self.api_map["舔狗日记"])
+        async for response in self.handle_api_response(event, "舔狗日记", result):
+            yield response
+
+    @filter.command("美女")
+    async def get_beauty(self, event: AstrMessageEvent):
+        """获取美女图片"""
+        result = await self.fetch_api(self.api_map["美女"])
+        async for response in self.handle_api_response(event, "美女", result):
+            yield response
+
+    @filter.command("图片")
+    async def get_image(self, event: AstrMessageEvent):
+        """获取随机图片"""
+        result = await self.fetch_api(self.api_map["图片"])
+        async for response in self.handle_api_response(event, "图片", result):
+            yield response
+
+    @filter.command("白丝")
+    async def get_baisi(self, event: AstrMessageEvent):
+        """获取白丝图片"""
+        result = await self.fetch_api(self.api_map["白丝"])
+        async for response in self.handle_api_response(event, "白丝", result):
+            yield response
+
+    @filter.command("黑丝")
+    async def get_heisi(self, event: AstrMessageEvent):
+        """获取黑丝图片"""
+        result = await self.fetch_api(self.api_map["黑丝"])
+        async for response in self.handle_api_response(event, "黑丝", result):
+            yield response
+
+    @filter.command("美腿")
+    async def get_meitui(self, event: AstrMessageEvent):
+        """获取美腿图片"""
+        result = await self.fetch_api(self.api_map["美腿"])
+        async for response in self.handle_api_response(event, "美腿", result):
+            yield response
 
     def _generate_help_text(self):
         """生成帮助文本"""
