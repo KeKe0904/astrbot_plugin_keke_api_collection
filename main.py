@@ -8,10 +8,8 @@ import platform
 import os
 import sys
 import psutil
-from PIL import Image, ImageDraw, ImageFont
-import io
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、R18、色图", "1.1.3")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、R18、色图", "1.1.2")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -206,21 +204,28 @@ class KekeApiCollectionPlugin(Star):
         try:
             # 收集系统信息
             info = []
-            info.append("【服务器信息】")
+            info.append("**【服务器详细信息】**")
+            info.append("")
             
             # 系统信息
-            info.append(f"操作系统: {platform.system()} {platform.release()} {platform.version()}")
-            info.append(f"架构: {platform.architecture()[0]}")
-            info.append(f"机器名: {platform.node()}")
+            info.append("**系统信息**")
+            info.append(f"- 操作系统: {platform.system()} {platform.release()} {platform.version()}")
+            info.append(f"- 架构: {platform.architecture()[0]}")
+            info.append(f"- 机器名: {platform.node()}")
+            info.append("")
             
             # Python信息
-            info.append(f"Python版本: {platform.python_version()}")
+            info.append("**Python信息**")
+            info.append(f"- Python版本: {platform.python_version()}")
+            info.append("")
             
             # CPU信息
             cpu_count = psutil.cpu_count(logical=True)
             cpu_usage = psutil.cpu_percent(interval=1)
-            info.append(f"CPU核心数: {cpu_count}")
-            info.append(f"CPU使用率: {cpu_usage}%")
+            info.append("**CPU信息**")
+            info.append(f"- 核心数: {cpu_count}")
+            info.append(f"- 使用率: {cpu_usage}%")
+            info.append("")
             
             # 内存信息
             memory = psutil.virtual_memory()
@@ -228,10 +233,12 @@ class KekeApiCollectionPlugin(Star):
             used_memory = round(memory.used / (1024**3), 2)
             free_memory = round(memory.free / (1024**3), 2)
             memory_usage = memory.percent
-            info.append(f"内存总量: {total_memory} GB")
-            info.append(f"已用内存: {used_memory} GB")
-            info.append(f"可用内存: {free_memory} GB")
-            info.append(f"内存使用率: {memory_usage}%")
+            info.append("**内存信息**")
+            info.append(f"- 总量: {total_memory} GB")
+            info.append(f"- 已用: {used_memory} GB")
+            info.append(f"- 可用: {free_memory} GB")
+            info.append(f"- 使用率: {memory_usage}%")
+            info.append("")
             
             # 磁盘信息
             disk = psutil.disk_usage('/')
@@ -239,69 +246,35 @@ class KekeApiCollectionPlugin(Star):
             used_disk = round(disk.used / (1024**3), 2)
             free_disk = round(disk.free / (1024**3), 2)
             disk_usage = disk.percent
-            info.append(f"磁盘总量: {total_disk} GB")
-            info.append(f"已用磁盘: {used_disk} GB")
-            info.append(f"可用磁盘: {free_disk} GB")
-            info.append(f"磁盘使用率: {disk_usage}%")
+            info.append("**磁盘信息**")
+            info.append(f"- 总量: {total_disk} GB")
+            info.append(f"- 已用: {used_disk} GB")
+            info.append(f"- 可用: {free_disk} GB")
+            info.append(f"- 使用率: {disk_usage}%")
+            info.append("")
             
             # 网络信息
             net_io = psutil.net_io_counters()
             bytes_sent = round(net_io.bytes_sent / (1024**2), 2)
             bytes_recv = round(net_io.bytes_recv / (1024**2), 2)
-            info.append(f"已发送流量: {bytes_sent} MB")
-            info.append(f"已接收流量: {bytes_recv} MB")
+            info.append("**网络信息**")
+            info.append(f"- 已发送流量: {bytes_sent} MB")
+            info.append(f"- 已接收流量: {bytes_recv} MB")
+            info.append("")
             
             # 进程信息
             process_count = len(psutil.pids())
-            info.append(f"当前进程数: {process_count}")
+            info.append("**进程信息**")
+            info.append(f"- 当前进程数: {process_count}")
+            info.append("")
             
             # 环境信息
-            info.append(f"当前工作目录: {os.getcwd()}")
+            info.append("**环境信息**")
+            info.append(f"- 当前工作目录: {os.getcwd()}")
             
-            # 生成图片
-            try:
-                # 创建图片
-                width, height = 600, 600
-                image = Image.new('RGB', (width, height), color=(240, 240, 240))
-                draw = ImageDraw.Draw(image)
-                
-                # 尝试加载字体
-                try:
-                    # 尝试使用系统字体
-                    font = ImageFont.truetype('arial.ttf', 14)
-                except:
-                    # 如果没有arial字体，使用默认字体
-                    font = ImageFont.load_default()
-                
-                # 绘制标题
-                title_font = ImageFont.truetype('arial.ttf', 18) if 'arial.ttf' in os.listdir() else font
-                draw.text((50, 30), "服务器信息", fill=(0, 0, 0), font=title_font)
-                
-                # 绘制信息
-                y_offset = 70
-                line_height = 25
-                for line in info[1:]:  # 跳过标题，因为已经单独绘制
-                    draw.text((50, y_offset), line, fill=(0, 0, 0), font=font)
-                    y_offset += line_height
-                
-                # 将图片转换为字节流
-                img_byte_arr = io.BytesIO()
-                image.save(img_byte_arr, format='PNG')
-                img_byte_arr.seek(0)
-                
-                # 将字节流编码为base64
-                img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
-                
-                # 构建data URL
-                img_data_url = f"data:image/png;base64,{img_base64}"
-                
-                # 返回图片
-                yield event.image_result(img_data_url)
-            except Exception as img_error:
-                logger.error(f"生成图片失败: {img_error}")
-                # 如果生成图片失败，返回文本信息
-                info_message = "\n".join(info)
-                yield event.plain_result(info_message)
+            # 组合信息
+            info_message = "\n".join(info)
+            yield event.plain_result(info_message)
         except Exception as e:
             logger.error(f"获取设备信息失败: {e}")
             yield event.plain_result(f"获取设备信息失败: {str(e)}")
