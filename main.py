@@ -5,7 +5,7 @@ import aiohttp
 import json
 import base64
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、R18、色图", "1.0.0")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿、R18、色图", "1.1.1")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -172,6 +172,25 @@ class KekeApiCollectionPlugin(Star):
         """获取色图"""
         async for result in self.handle_api_request(event, "色图"):
             yield result
+
+    @filter.command("帮助")
+    async def help(self, event: AstrMessageEvent):
+        """查看所有可用指令"""
+        help_message = "【柯柯API集合】可用指令：\n"
+        for command in self.api_map.keys():
+            help_message += f"- {command}\n"
+        help_message += "\n发送以上指令即可调用对应API获取内容"
+        yield event.plain_result(help_message)
+
+    @filter.command("菜单")
+    async def menu(self, event: AstrMessageEvent):
+        """查看所有可用指令"""
+        # 复用help方法的逻辑
+        help_message = "【柯柯API集合】可用指令：\n"
+        for command in self.api_map.keys():
+            help_message += f"- {command}\n"
+        help_message += "\n发送以上指令即可调用对应API获取内容"
+        yield event.plain_result(help_message)
 
     async def terminate(self):
         """插件销毁方法"""
