@@ -44,11 +44,14 @@
 
 ## 版本信息
 
-- 版本：1.3.0
+- 版本：1.3.1
 - 作者：落梦陳
 - 仓库地址：https://github.com/KeKe0904/astrbot_plugin_keke_api_collection
 
 ## 更新日志
+
+### v1.3.1
+- 修复asyncio导入问题：添加全局asyncio导入，移除方法内的局部导入，解决"cannot access local variable 'asyncio'"错误
 
 ### v1.3.0
 - 优化异步网络资源管理：在插件生命周期内复用ClientSession，提高性能和稳定性

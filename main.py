@@ -7,8 +7,9 @@ import base64
 import platform
 import os
 import psutil
+import asyncio
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿", "1.3.0")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝、美腿", "1.3.1")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -60,7 +61,6 @@ class KekeApiCollectionPlugin(Star):
                     if 500 <= response.status < 600:
                         if attempt < max_retries - 1:
                             logger.warning(f"API返回{response.status}错误，第{attempt+1}次重试...")
-                            import asyncio
                             await asyncio.sleep(retry_delay * (2 ** attempt))  # 指数退避
                             continue
                         else:
@@ -92,7 +92,6 @@ class KekeApiCollectionPlugin(Star):
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 if attempt < max_retries - 1:
                     logger.warning(f"API请求异常: {e}，第{attempt+1}次重试...")
-                    import asyncio
                     await asyncio.sleep(retry_delay * (2 ** attempt))  # 指数退避
                     continue
                 else:

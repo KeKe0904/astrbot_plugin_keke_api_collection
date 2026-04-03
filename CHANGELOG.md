@@ -1,5 +1,10 @@
 # 变更日志
 
+## [v1.3.1] - 2026-04-03
+
+### 修复
+- 修复asyncio导入问题：添加全局asyncio导入，移除方法内的局部导入，解决"cannot access local variable 'asyncio'"错误
+
 ## [v1.3.0] - 2026-04-03
 
 ### 优化
