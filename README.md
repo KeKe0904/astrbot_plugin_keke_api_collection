@@ -43,11 +43,18 @@
 
 ## 版本信息
 
-- 版本：1.4.2
+- 版本：1.5.0
 - 作者：落梦陳
 - 仓库地址：https://github.com/KeKe0904/astrbot_plugin_keke_api_collection
 
 ## 更新日志
+
+### v1.5.0
+- 代码优化：移除无用导入（base64）
+- 代码优化：移除重复导入（os）
+- 功能优化：增强content_type判断，使用lower()进行更严谨的匹配
+- 安全优化：修复ClientSession懒加载的竞态条件风险
+- 性能优化：修复device_info方法中的事件循环阻塞问题，使用run_in_executor
 
 ### v1.4.2
 - 移除美腿指令和API：由于API不稳定且存在反爬虫机制，移除该指令

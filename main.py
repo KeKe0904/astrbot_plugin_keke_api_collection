@@ -3,13 +3,12 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 import aiohttp
 import json
-import base64
 import platform
 import os
 import psutil
 import asyncio
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝", "1.4.2")
+@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝", "1.5.0")
 class KekeApiCollectionPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -41,8 +40,9 @@ class KekeApiCollectionPlugin(Star):
         
         for attempt in range(max_retries):
             try:
-                # 使用复用的ClientSession
+                # 使用在on_loaded中初始化的ClientSession
                 if not self.session:
+                    logger.error("ClientSession未初始化，创建临时实例")
                     self.session = aiohttp.ClientSession()
                 
                 async with self.session.get(url, timeout=10) as response:
@@ -69,7 +69,7 @@ class KekeApiCollectionPlugin(Star):
                             # 如果不是JSON，返回文本或二进制数据
                             content_type = response.headers.get('Content-Type', '')
                             logger.info(f"API响应Content-Type: {content_type}")
-                            if 'image' in content_type:
+                            if 'image' in content_type.lower():
                                 # 对于图片，返回图片URL
                                 return {"image_url": url}
                             else:
@@ -224,7 +224,10 @@ class KekeApiCollectionPlugin(Star):
             
             # CPU信息
             cpu_count = psutil.cpu_count(logical=True)
-            cpu_usage = psutil.cpu_percent(interval=1)
+            # 使用run_in_executor避免阻塞事件循环
+            import asyncio
+            loop = asyncio.get_running_loop()
+            cpu_usage = await loop.run_in_executor(None, lambda: psutil.cpu_percent(interval=1))
             info.append("**CPU信息**")
             info.append(f"- 核心数: {cpu_count}")
             info.append(f"- 使用率: {cpu_usage}%")
