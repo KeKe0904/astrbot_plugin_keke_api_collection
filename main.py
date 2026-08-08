@@ -316,14 +316,28 @@ class KekeApiCollectionPlugin(Star):
                         headers={"User-Agent": self.user_agent},
                         timeout=timeout,
                     ) as resp:
-                        await resp.content.read(128)
+                        body = await resp.content.read(256)
+                        ct = (resp.headers.get("Content-Type") or "").lower()
                         elapsed = round((time.time() - start) * 1000)
+                        if ct.startswith("image/"):
+                            rtype = "图片"
+                        elif ct.startswith("audio/"):
+                            rtype = "音频"
+                        elif ct.startswith("video/"):
+                            rtype = "视频"
+                        elif "json" in ct:
+                            rtype = "JSON"
+                        else:
+                            rtype = "文本"
                         return {
                             "name": name,
                             "url": url,
                             "ok": resp.status == 200,
                             "status": resp.status,
                             "elapsed_ms": elapsed,
+                            "content_type": ct or "未知",
+                            "response_type": rtype,
+                            "size": len(body),
                         }
                 except asyncio.TimeoutError:
                     return {"name": name, "url": url, "ok": False, "status": 0,
@@ -347,6 +361,10 @@ class KekeApiCollectionPlugin(Star):
             if ok_list
             else 0
         )
+        type_stats = {}
+        for r in ok_list:
+            t = r.get("response_type", "未知")
+            type_stats[t] = type_stats.get(t, 0) + 1
         return json_response(
             {
                 "ok": True,
@@ -356,6 +374,7 @@ class KekeApiCollectionPlugin(Star):
                 "avg_ms": avg,
                 "fastest": ok_list[0] if ok_list else None,
                 "slowest": ok_list[-1] if ok_list else None,
+                "type_stats": type_stats,
                 "results": ok_list + fail_list,
             }
         )

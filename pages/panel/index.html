@@ -20,7 +20,7 @@
     --red: #ff5b5b;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --round: 16px;
-    --shadow: 0 1px 2px rgba(43,43,51,0.04), 0 4px 16px rgba(43,43,51,0.04);
+    --shadow: none;
   }
   [data-theme="dark"] {
     --bg: #16161c;
@@ -35,7 +35,7 @@
     --accent-bg: rgba(255,143,181,0.13);
     --green: #5be09a;
     --red: #ff6b6b;
-    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.25);
+    --shadow: none;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -133,7 +133,7 @@
     padding: 15px 17px; display: flex; flex-direction: column; gap: 8px;
     transition: transform .18s, border-color .18s, box-shadow .18s; box-shadow: var(--shadow);
   }
-  .card:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 6px 24px var(--accent-bg); }
+  .card:hover { border-color: var(--accent); }
   .card-top { display: flex; align-items: center; gap: 8px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
   .dot.ok { background: var(--green); }
@@ -173,7 +173,7 @@
   .m-table { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--round); overflow: hidden; box-shadow: var(--shadow); }
   .m-row { display: grid; grid-template-columns: 190px 1fr 100px 70px 140px; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--border); align-items: center; transition: background .15s; }
   .m-row:last-child { border-bottom: none; }
-  .m-row:hover { background: var(--accent-bg); }
+  .m-row:hover { background: var(--bg-soft); }
   .m-row.off { opacity: .55; }
   .m-row.off .name-input { text-decoration: line-through; }
   .m-row.head { font-size: 11px; color: var(--fg-2); font-weight: 700; letter-spacing: 0.05em; background: var(--bg-soft); }
@@ -218,15 +218,18 @@
   .ping-summary .ps.bad b { color: var(--red); }
   .ping-summary .ps.accent b { color: var(--accent-deep); }
   .ping-list { overflow-y: auto; padding: 8px 0; }
-  .ping-row { display: grid; grid-template-columns: 150px 90px 1fr; gap: 10px; padding: 7px 20px; align-items: center; font-size: 12.5px; }
+  .ping-row { display: grid; grid-template-columns: 150px 80px 54px 1fr; gap: 10px; padding: 7px 20px; align-items: center; font-size: 12.5px; }
   .ping-row:nth-child(odd) { background: var(--bg-soft); }
   .ping-row .pn { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ping-row .pm { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
   .ping-row .pm.fast { color: var(--green); }
   .ping-row .pm.mid { color: #f5a623; }
   .ping-row .pm.slow { color: var(--red); }
+  .ping-row .pt { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: var(--bg-soft); color: var(--fg-2); text-align: center; border: 1px solid var(--border); }
   .ping-row .pu { font-family: var(--mono); font-size: 10.5px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ping-empty { padding: 40px; text-align: center; color: var(--fg-2); font-size: 13px; }
+  .modal-foot { display: flex; gap: 10px; align-items: center; padding: 12px 20px; border-top: 1px solid var(--border); }
+  .modal-foot .pf-note { font-size: 11.5px; color: var(--fg-2); }
 </style>
 </head>
 <body>
@@ -286,8 +289,8 @@
 
   <div class="manage" id="view-manage">
     <div class="m-toolbar">
-      <button class="btn primary" id="m-save">💾 保存全部修改</button>
-      <button class="btn" id="m-ping">📶 批量测速</button>
+      <button class="btn primary" id="m-save">保存全部修改</button>
+      <button class="btn" id="m-ping">批量检测</button>
       <button class="btn" id="m-add">+ 新增指令</button>
       <button class="btn" id="m-reset">重新加载</button>
       <span class="m-status" id="m-status">加载中…</span>
@@ -315,11 +318,15 @@
 <div class="modal-mask" id="ping-modal">
   <div class="modal">
     <div class="modal-head">
-      <h2>批量测速</h2>
-      <button class="modal-close" id="ping-close">✕</button>
+      <h2>批量检测</h2>
+      <button class="modal-close" id="ping-close">×</button>
     </div>
     <div class="ping-summary" id="ping-summary"></div>
     <div class="ping-list" id="ping-list"></div>
+    <div class="modal-foot">
+      <button class="btn danger" id="ping-disable" disabled>禁用失效接口</button>
+      <span class="pf-note" id="ping-foot-note"></span>
+    </div>
   </div>
 </div>
 
@@ -601,14 +608,14 @@ async function testRow(idx, btn) {
   try {
     const res = await bridge.apiPost("config/test", { url: row.url });
     if (res.ok) {
-      cell.textContent = "✅ " + res.status + " · " + res.elapsed_ms + "ms" + (res.is_image ? " · 图片" : "");
+      cell.textContent = res.status + " · " + res.elapsed_ms + "ms" + (res.is_image ? " · 图片" : "");
       cell.style.color = "var(--green)";
     } else {
-      cell.textContent = "❌ " + (res.error || ("HTTP " + res.status)) + " · " + res.elapsed_ms + "ms";
+      cell.textContent = (res.error || ("HTTP " + res.status)) + " · " + res.elapsed_ms + "ms";
       cell.style.color = "var(--red)";
     }
   } catch (err) {
-    cell.textContent = "❌ " + (err.message || "请求失败");
+    cell.textContent = (err.message || "请求失败");
     cell.style.color = "var(--red)";
   }
   btn.disabled = false;
@@ -641,7 +648,7 @@ document.getElementById("m-add").addEventListener("click", () => {
 });
 document.getElementById("m-reset").addEventListener("click", () => loadManage());
 
-/* ---------- 批量测速 ---------- */
+/* ---------- 批量检测 ---------- */
 async function pingAll() {
   if (!bridge) { setManageStatus("未连接后端，无法测速", true); return; }
   const modal = document.getElementById("ping-modal");
@@ -652,7 +659,7 @@ async function pingAll() {
   summary.innerHTML = '<span class="ps">检测中…（并发 10，单接口 8s 超时）</span>';
   list.innerHTML = '<div class="ping-empty">正在检测全部接口延迟，请稍候…</div>';
   btn.disabled = true;
-  btn.textContent = "测速中…";
+  btn.textContent = "检测中…";
   try {
     const res = await bridge.apiPost("config/ping", {});
     summary.innerHTML =
@@ -667,7 +674,8 @@ async function pingAll() {
       const el = document.createElement("div");
       el.className = "ping-row";
       el.innerHTML = '<span class="pn">' + r.name + '</span>' +
-        '<span class="pm ' + cls + '">' + (r.ok ? r.elapsed_ms + "ms" : "✕ 失败") + '</span>' +
+        '<span class="pm ' + cls + '">' + (r.ok ? r.elapsed_ms + "ms" : "失败") + '</span>' +
+        '<span class="pt">' + (r.response_type || "-") + '</span>' +
         '<span class="pu" title="' + r.url + '">' + r.url + '</span>';
       list.appendChild(el);
     });
@@ -677,25 +685,36 @@ async function pingAll() {
       const idx = managed.findIndex(m => m.name === r.name);
       const cell = document.querySelector('.tresult[data-idx="' + idx + '"]');
       if (cell) {
-        cell.textContent = r.ok ? r.elapsed_ms + "ms" : "✕ 失败";
+        cell.textContent = r.ok ? r.elapsed_ms + "ms" : "失败";
         cell.style.color = r.ok ? "var(--green)" : "var(--red)";
       }
     });
+    // 记录失败名单，启用「禁用失效接口」按钮
+    const fails = (res.results || []).filter(r => !r.ok).map(r => r.name);
+    const disBtn = document.getElementById("ping-disable");
+    const note = document.getElementById("ping-foot-note");
+    if (fails.length) {
+      disBtn.disabled = false;
+      note.textContent = "检测到 " + fails.length + " 个失效接口";
+    } else {
+      disBtn.disabled = true;
+      note.textContent = "全部接口正常";
+    }
+    disBtn.dataset.fails = JSON.stringify(fails);
   } catch (err) {
     list.innerHTML = '<div class="ping-empty">测速失败: ' + (err.message || err) + '</div>';
   }
   btn.disabled = false;
-  btn.textContent = "批量测速";
+  btn.textContent = "批量检测";
 }
 document.getElementById("m-ping").addEventListener("click", pingAll);
 document.getElementById("ping-close").addEventListener("click", () => document.getElementById("ping-modal").classList.remove("show"));
 document.getElementById("ping-modal").addEventListener("click", (e) => { if (e.target.id === "ping-modal") e.target.classList.remove("show"); });
-document.getElementById("m-save").addEventListener("click", async (e) => {
+async function saveAll(btn) {
   if (!bridge) { setManageStatus("未连接后端", true); return; }
-  const btn = e.target;
-  // 过滤空行与校验
+  btn = btn || document.getElementById("m-save");
   const clean = managed
-    .map(r => ({ name: r.name.trim(), url: r.url.trim() }))
+    .map(r => ({ name: r.name.trim(), url: r.url.trim(), disabled: r.disabled }))
     .filter(r => r.name && r.url);
   for (const r of clean) {
     if (!/^https?:\/\//.test(r.url)) { setManageStatus("无效地址: " + r.url, true); return; }
@@ -708,12 +727,27 @@ document.getElementById("m-save").addEventListener("click", async (e) => {
     liveApiMap = {};
     clean.forEach(r => { liveApiMap[r.name] = r.url; });
     liveDisabled = disabled;
-    setManageStatus("✅ 已保存 " + clean.length + " 条指令，立即生效（禁用 " + disabled.length + " 条）");
+    setManageStatus("已保存 " + clean.length + " 条指令，立即生效（禁用 " + disabled.length + " 条）");
     await loadLiveConfig();
   } catch (err) {
     setManageStatus("保存失败: " + (err.message || err), true);
   }
-  btn.textContent = "💾 保存全部修改";
+  btn.textContent = "保存全部修改";
+}
+document.getElementById("m-save").addEventListener("click", (e) => saveAll(e.target));
+
+/* 一键禁用批量检测出的失效接口 */
+document.getElementById("ping-disable").addEventListener("click", async (e) => {
+  const btn = e.target;
+  let fails = [];
+  try { fails = JSON.parse(btn.dataset.fails || "[]"); } catch (err) {}
+  if (!fails.length) return;
+  managed.forEach(m => { if (fails.includes(m.name)) m.disabled = true; });
+  renderRows();
+  btn.disabled = true;
+  document.getElementById("ping-foot-note").textContent = "已标记 " + fails.length + " 个失效接口，正在保存…";
+  await saveAll(document.getElementById("m-save"));
+  document.getElementById("ping-foot-note").textContent = "已禁用 " + fails.length + " 个失效接口";
 });
 
 /* ---------- 模式切换 ---------- */

@@ -4,7 +4,7 @@
 
 **AstrBot 多功能 API 聚合插件 —— 图片 · 壁纸 · 文案 · 动物 · 音乐 · 视频，一个插件全部搞定**
 
-[![Version](https://img.shields.io/badge/version-v2.0.7-0071e3.svg)](https://github.com/KeKe0904/astrbot_plugin_keke_api_collection)
+[![Version](https://img.shields.io/badge/version-v2.0.8-0071e3.svg)](https://github.com/KeKe0904/astrbot_plugin_keke_api_collection)
 [![AstrBot](https://img.shields.io/badge/AstrBot-%3E%3D3.5.19-409cff.svg)](https://github.com/AstrBotDevs/AstrBot)
 [![APIs](https://img.shields.io/badge/API-513%2B-34c759.svg)](500源总清单.md)
 [![License](https://img.shields.io/badge/License-MIT-gray.svg)](LICENSE)
