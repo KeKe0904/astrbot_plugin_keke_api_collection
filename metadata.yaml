@@ -1,7 +1,7 @@
 name: astrbot_plugin_keke_api_collection # 插件唯一识别名，以 astrbot_plugin_ 前缀开头
 display_name: 柯柯API集合 # 用于展示的名字
 desc: 【柯柯API集合】聚合图片、壁纸、文案、动物、音乐、视频等全年龄 API 接口，500+ 接口全部预置直接可用，支持管理面板自由增删 # 插件简短描述
-version: v2.0.3 # 插件版本号
+version: v2.0.4 # 插件版本号
 author: 落梦陳 # 作者
 repo: https://github.com/KeKe0904/astrbot_plugin_keke_api_collection # 插件的仓库地址
 astrbot_version: ">=3.5.19" # 要求的 AstrBot 版本范围（依赖自动识别 Star 类，无需 @register）

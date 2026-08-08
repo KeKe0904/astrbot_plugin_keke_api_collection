@@ -6,63 +6,44 @@
 <title>柯柯API集合 · 接口管理</title>
 <style>
   :root {
-    --bg: #f5f5f7;
-    --bg-card: #ffffff;
-    --fg: #1d1d1f;
-    --fg-2: #6e6e73;
-    --border: rgba(0,0,0,0.08);
-    --border-strong: rgba(0,0,0,0.14);
-    --accent: #0071e3;
-    --accent-bg: rgba(0,113,227,0.08);
-    --green: #34c759;
+    --bg: #f5f5f7; --bg-card: #ffffff; --fg: #1d1d1f; --fg-2: #6e6e73;
+    --border: rgba(0,0,0,0.08); --border-strong: rgba(0,0,0,0.14);
+    --accent: #0071e3; --accent-bg: rgba(0,113,227,0.08);
+    --green: #34c759; --red: #ff3b30;
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
     --radius: 12px;
   }
   [data-theme="dark"] {
-    --bg: #101012;
-    --bg-card: #1c1c1f;
-    --fg: #f5f5f7;
-    --fg-2: #98989d;
-    --border: rgba(255,255,255,0.09);
-    --border-strong: rgba(255,255,255,0.16);
-    --accent: #409cff;
-    --accent-bg: rgba(64,156,255,0.13);
-    --green: #30d158;
+    --bg: #101012; --bg-card: #1c1c1f; --fg: #f5f5f7; --fg-2: #98989d;
+    --border: rgba(255,255,255,0.09); --border-strong: rgba(255,255,255,0.16);
+    --accent: #409cff; --accent-bg: rgba(64,156,255,0.13);
+    --green: #30d158; --red: #ff453a;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro SC", "PingFang SC",
                  "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
-    background: var(--bg);
-    color: var(--fg);
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    font-size: 14px;
+    background: var(--bg); color: var(--fg); line-height: 1.5;
+    -webkit-font-smoothing: antialiased; font-size: 14px;
   }
   .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 28px 72px; }
 
-  /* ---------- 头部：左对齐紧凑 ---------- */
-  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 22px; }
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 18px; }
   .kicker { font-size: 11px; letter-spacing: 0.14em; color: var(--fg-2); text-transform: uppercase; margin-bottom: 6px; }
   h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
   .sub { color: var(--fg-2); font-size: 13px; margin-top: 4px; }
   .stats { display: flex; gap: 26px; }
   .stat { text-align: right; }
-  .stat b { font-size: 20px; font-weight: 650; display: block; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .stat b { font-size: 20px; font-weight: 650; display: block; font-variant-numeric: tabular-nums; }
   .stat span { font-size: 11px; color: var(--fg-2); }
 
-  /* ---------- 生效指令横条 ---------- */
   .live {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 14px 18px; margin-bottom: 18px;
-    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 13px 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   }
   .live .lv-title { font-size: 13px; font-weight: 650; flex: none; white-space: nowrap; }
   .live .chips { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 200px; padding-bottom: 2px; scrollbar-width: thin; }
-  .chip {
-    flex: none; font-size: 12px; padding: 3px 10px; border-radius: 999px;
-    background: var(--accent-bg); color: var(--accent); font-weight: 500; cursor: default;
-  }
+  .chip { flex: none; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--accent-bg); color: var(--accent); font-weight: 500; }
   .chip.custom { background: rgba(255,149,0,0.14); color: #c77d00; }
   [data-theme="dark"] .chip.custom { color: #ffb340; }
   .live .tools { display: flex; gap: 8px; flex: none; }
@@ -72,48 +53,48 @@
     font-family: inherit; transition: all .15s; white-space: nowrap;
   }
   .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { opacity: .9; }
+  .btn.danger:hover { border-color: var(--red); color: var(--red); }
   .btn.done { border-color: var(--green); color: var(--green); }
   .live .status-line { font-size: 11.5px; color: var(--fg-2); flex: none; }
-  .live .status-line.error { color: #ff3b30; }
-  .cfg-text {
-    display: none; width: 100%; margin-top: 10px; background: var(--bg);
-    border: 1px solid var(--border); border-radius: 10px;
-    font-family: var(--mono); font-size: 11px; color: var(--fg-2);
-    padding: 12px 14px; max-height: 200px; overflow: auto; white-space: pre;
-  }
+  .live .status-line.error { color: var(--red); }
+  .cfg-text { display: none; width: 100%; margin-top: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; font-family: var(--mono); font-size: 11px; color: var(--fg-2); padding: 12px 14px; max-height: 200px; overflow: auto; white-space: pre; }
   .cfg-text.show { display: block; }
 
-  /* ---------- 工具栏 ---------- */
+  /* 模式切换 */
+  .mode-tabs { display: flex; gap: 5px; margin-bottom: 14px; }
+  .mode {
+    border: 1px solid var(--border); background: var(--bg-card); color: var(--fg-2);
+    border-radius: 9px 9px 0 0; padding: 8px 18px; font-size: 13px; cursor: pointer;
+    font-family: inherit; transition: all .15s; border-bottom: none;
+  }
+  .mode.active { color: var(--fg); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+  .mode:hover { color: var(--fg); }
+
+  /* 浏览模式 */
   .toolbar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
-  input[type="search"] {
-    flex: 1; min-width: 240px; background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 10px; color: var(--fg); padding: 9px 14px; font-size: 13px;
-    outline: none; transition: border-color .15s, box-shadow .15s;
+  input[type="search"], input[type="text"] {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--fg); padding: 9px 14px; font-size: 13px; outline: none;
+    transition: border-color .15s, box-shadow .15s; font-family: inherit;
   }
-  input[type="search"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+  input[type="search"] { flex: 1; min-width: 240px; }
+  input[type="search"]:focus, input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
   .tabs { display: flex; gap: 5px; flex-wrap: wrap; }
-  .tab {
-    border: 1px solid var(--border); background: transparent; color: var(--fg-2);
-    border-radius: 999px; padding: 5px 13px; font-size: 12.5px; cursor: pointer;
-    transition: all .15s; font-family: inherit;
-  }
+  .tab { border: 1px solid var(--border); background: transparent; color: var(--fg-2); border-radius: 999px; padding: 5px 13px; font-size: 12.5px; cursor: pointer; transition: all .15s; font-family: inherit; }
   .tab:hover { color: var(--fg); }
   .tab.active { background: var(--fg); border-color: var(--fg); color: var(--bg); }
   .count { font-size: 12px; color: var(--fg-2); margin-left: auto; font-variant-numeric: tabular-nums; }
 
-  /* ---------- 卡片网格 ---------- */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
-  .card {
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
-    transition: border-color .15s, transform .15s;
-  }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; transition: border-color .15s; }
   .card:hover { border-color: var(--border-strong); }
   .card-top { display: flex; align-items: center; gap: 8px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
   .dot.ok { background: var(--green); }
   .dot.cand { background: #aeaeb2; }
-  .badge { flex: none; font-size: 10.5px; padding: 2px 8px; border-radius: 5px; font-weight: 600; letter-spacing: 0.02em; }
+  .badge { flex: none; font-size: 10.5px; padding: 2px 8px; border-radius: 5px; font-weight: 600; }
   .badge-img   { background: rgba(255,149,0,0.14);  color: #c77d00; }
   .badge-wall  { background: rgba(0,122,255,0.13);   color: #0066cc; }
   .badge-text  { background: rgba(52,199,89,0.13);   color: #248a3d; }
@@ -128,22 +109,37 @@
   [data-theme="dark"] .badge-music { color: #cd8cff; }
   [data-theme="dark"] .badge-video { color: #ff7a72; }
   [data-theme="dark"] .badge-tool  { color: #b0b0b6; }
-  .card .name { font-size: 13.5px; font-weight: 600; line-height: 1.3; }
+  .card .name { font-size: 13.5px; font-weight: 600; }
   .card .note { font-size: 12px; color: var(--fg-2); }
-  .card .url {
-    font-family: var(--mono); font-size: 11px; color: var(--fg-2);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl;
-    text-align: left;
-  }
-  .card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 4px; }
-  .copy {
-    flex: none; border: 1px solid var(--border); background: transparent; color: var(--fg-2);
-    border-radius: 7px; font-size: 11.5px; padding: 5px 10px; cursor: pointer;
-    font-family: inherit; transition: all .15s;
-  }
+  .card .url { font-family: var(--mono); font-size: 11px; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+  .card-foot { display: flex; justify-content: space-between; margin-top: auto; padding-top: 4px; }
+  .copy { border: 1px solid var(--border); background: transparent; color: var(--fg-2); border-radius: 7px; font-size: 11.5px; padding: 5px 10px; cursor: pointer; font-family: inherit; transition: all .15s; }
   .copy:hover { border-color: var(--accent); color: var(--accent); }
   .copy.done { border-color: var(--green); color: var(--green); }
   .empty { grid-column: 1 / -1; padding: 56px 20px; text-align: center; color: var(--fg-2); font-size: 13px; }
+
+  /* 管理模式 */
+  .manage { display: none; }
+  .manage.show { display: block; }
+  .m-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .m-toolbar .m-status { font-size: 12px; color: var(--fg-2); }
+  .m-toolbar .m-status.error { color: var(--red); }
+  .m-toolbar .m-status.ok { color: var(--green); }
+  .m-table { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .m-row { display: grid; grid-template-columns: 190px 1fr 110px 150px; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--border); align-items: center; }
+  .m-row:last-child { border-bottom: none; }
+  .m-row.head { font-size: 11px; color: var(--fg-2); font-weight: 600; letter-spacing: 0.04em; background: var(--bg); }
+  .m-row input[type="text"] { width: 100%; padding: 7px 10px; font-size: 12.5px; border-radius: 8px; }
+  .m-row .url-input { font-family: var(--mono); font-size: 11.5px; }
+  .m-row .op { border: 1px solid var(--border); background: transparent; color: var(--fg-2); border-radius: 7px; font-size: 12px; padding: 6px 0; cursor: pointer; font-family: inherit; transition: all .15s; }
+  .m-row .op.test:hover { border-color: var(--accent); color: var(--accent); }
+  .m-row .op.del:hover { border-color: var(--red); color: var(--red); }
+  .m-row .op:disabled { opacity: .45; cursor: wait; }
+  .m-new { display: grid; grid-template-columns: 190px 1fr 110px 150px; gap: 10px; padding: 12px 14px; }
+  .m-new input[type="text"] { width: 100%; padding: 7px 10px; font-size: 12.5px; border-radius: 8px; }
+  .m-new .url-input { font-family: var(--mono); font-size: 11.5px; }
+  .m-scroll { max-height: 60vh; overflow-y: auto; }
+  .m-actions { margin-top: 14px; display: flex; gap: 10px; align-items: center; }
 
   footer { margin-top: 26px; font-size: 12px; color: var(--fg-2); }
   footer code { font-family: var(--mono); font-size: 11px; background: var(--bg-card); border: 1px solid var(--border); padding: 2px 7px; border-radius: 6px; }
@@ -153,7 +149,7 @@
 <div class="wrap">
   <header>
     <div>
-      <div class="kicker">Keke API Collection · v2.0.2</div>
+      <div class="kicker">Keke API Collection · v2.0.4</div>
       <h1>柯柯API集合</h1>
       <div class="sub">全年龄图片 / 壁纸 / 文案 / 动物 / 音乐 / 视频接口 · 全部实测验证</div>
     </div>
@@ -177,23 +173,56 @@
     <div class="cfg-text" id="cfg-text"></div>
   </section>
 
-  <div class="toolbar">
-    <input type="search" id="search" placeholder="搜索接口名称或地址…">
-    <div class="tabs" id="tabs">
-      <button class="tab active" data-cat="全部">全部</button>
-      <button class="tab" data-cat="图片">图片</button>
-      <button class="tab" data-cat="壁纸">壁纸</button>
-      <button class="tab" data-cat="文案">文案</button>
-      <button class="tab" data-cat="动物">动物</button>
-      <button class="tab" data-cat="音乐">音乐</button>
-      <button class="tab" data-cat="视频">视频</button>
-      <button class="tab" data-cat="工具">工具</button>
-    </div>
-    <div class="count" id="count"></div>
+  <div class="mode-tabs">
+    <button class="mode active" data-mode="browse">接口浏览</button>
+    <button class="mode" data-mode="manage">指令管理</button>
   </div>
 
-  <div class="grid" id="grid"></div>
-  <footer>管理面板 → 插件配置 → <code>api_map</code> 可增删接口（格式：指令名|接口地址）· 修改后重载插件生效</footer>
+  <!-- 浏览模式 -->
+  <div id="view-browse">
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="搜索接口名称或地址…">
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-cat="全部">全部</button>
+        <button class="tab" data-cat="图片">图片</button>
+        <button class="tab" data-cat="壁纸">壁纸</button>
+        <button class="tab" data-cat="文案">文案</button>
+        <button class="tab" data-cat="动物">动物</button>
+        <button class="tab" data-cat="音乐">音乐</button>
+        <button class="tab" data-cat="视频">视频</button>
+        <button class="tab" data-cat="工具">工具</button>
+      </div>
+      <div class="count" id="count"></div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <!-- 管理模式 -->
+  <div class="manage" id="view-manage">
+    <div class="m-toolbar">
+      <button class="btn primary" id="m-save">💾 保存全部修改</button>
+      <button class="btn" id="m-add">+ 新增指令</button>
+      <button class="btn" id="m-reset">重新加载</button>
+      <span class="m-status" id="m-status">加载中…</span>
+    </div>
+    <div class="m-table">
+      <div class="m-row head">
+        <span>指令名</span><span>接口地址</span><span>状态</span><span>操作</span>
+      </div>
+      <div class="m-scroll" id="m-rows"></div>
+      <div class="m-new">
+        <input type="text" id="m-new-name" placeholder="新指令名，如：每日壁纸">
+        <input type="text" id="m-new-url" class="url-input" placeholder="https://…">
+        <button class="btn" id="m-add-row">添加</button>
+        <span></span>
+      </div>
+    </div>
+    <div class="m-actions">
+      <span style="font-size:12px;color:var(--fg-2)">修改后点击「保存全部修改」立即生效（无需重载插件）；删除某行即禁用该指令。</span>
+    </div>
+  </div>
+
+  <footer>管理面板 → 插件配置 → <code>api_map</code> 也可编辑 · 指令名|接口地址</footer>
 </div>
 
 <script src="/api/plugin/page/bridge-sdk.js"></script>
@@ -313,6 +342,7 @@ const countEl = document.getElementById("count");
 const searchEl = document.getElementById("search");
 let curCat = "全部";
 
+/* ---------- 浏览模式 ---------- */
 function render() {
   const q = searchEl.value.trim().toLowerCase();
   let visible = 0;
@@ -325,18 +355,10 @@ function render() {
     visible++;
     const el = document.createElement("div");
     el.className = "card";
-    el.innerHTML = `
-      <div class="card-top">
-        <span class="dot ${ok ? "ok" : "cand"}"></span>
-        <span class="badge ${CATS[cat]}">${cat}</span>
-        <span class="name">${name}</span>
-      </div>
+    el.innerHTML = `<div class="card-top"><span class="dot ${ok ? "ok" : "cand"}"></span><span class="badge ${CATS[cat]}">${cat}</span><span class="name">${name}</span></div>
       <div class="note">${note}${ok ? "" : " · 候选"}</div>
       <div class="url" title="${url}">${url}</div>
-      <div class="card-foot">
-        <span class="count" style="margin:0"></span>
-        <button class="copy" data-url="${url}">复制地址</button>
-      </div>`;
+      <div class="card-foot"><button class="copy" data-url="${url}">复制地址</button></div>`;
     el.querySelector(".copy").addEventListener("click", (e) => {
       const btn = e.target;
       navigator.clipboard.writeText(url).then(() => {
@@ -365,6 +387,7 @@ const statusEl = document.getElementById("live-status");
 const chipsEl = document.getElementById("chips");
 const cfgTextEl = document.getElementById("cfg-text");
 let liveApiMap = null;
+let bridge = null;
 
 function copyText(text, btn, doneLabel) {
   navigator.clipboard.writeText(text).then(() => {
@@ -377,7 +400,7 @@ function copyText(text, btn, doneLabel) {
 
 async function loadLiveConfig() {
   try {
-    const bridge = window.AstrBotPluginPage;
+    bridge = window.AstrBotPluginPage;
     if (!bridge) throw new Error("bridge 不可用");
     const ctx = await bridge.ready();
     if (ctx && document.documentElement.getAttribute("data-theme") === null && ctx.isDark !== undefined) {
@@ -398,10 +421,14 @@ async function loadLiveConfig() {
     statusEl.textContent = "已连接 · " + names.length + " 个生效指令 · 自定义 " + custom.length;
     statusEl.classList.remove("error");
     cfgTextEl.textContent = names.map(n => n + "|" + liveApiMap[n]).join("\n");
+    loadManage();
+    return true;
   } catch (e) {
     chipsEl.innerHTML = '<span class="chip">未连接（独立预览）</span>';
     statusEl.textContent = "无法连接到插件后端，显示内置示例数据。";
     statusEl.classList.add("error");
+    setManageStatus("未连接后端，无法管理", true);
+    return false;
   }
 }
 
@@ -412,6 +439,125 @@ document.getElementById("copy-cfg").addEventListener("click", (e) => {
 document.getElementById("toggle-cfg").addEventListener("click", (e) => {
   cfgTextEl.classList.toggle("show");
   e.target.textContent = cfgTextEl.classList.contains("show") ? "收起配置" : "查看配置";
+});
+
+/* ---------- 管理模式 ---------- */
+const rowsEl = document.getElementById("m-rows");
+const mStatusEl = document.getElementById("m-status");
+let managed = [];  // [{name, url}]
+
+function setManageStatus(msg, isErr) {
+  mStatusEl.textContent = msg;
+  mStatusEl.className = "m-status" + (isErr ? " error" : " ok");
+}
+
+function renderRows() {
+  rowsEl.innerHTML = "";
+  managed.forEach((row, idx) => {
+    const el = document.createElement("div");
+    el.className = "m-row";
+    el.innerHTML = `<input type="text" value="${escapeAttr(row.name)}" data-field="name">
+      <input type="text" class="url-input" value="${escapeAttr(row.url)}" data-field="url">
+      <span class="tresult" data-idx="${idx}" style="font-size:11px;color:var(--fg-2)">未测试</span>
+      <span style="display:flex;gap:6px">
+        <button class="op test" data-idx="${idx}">测试</button>
+        <button class="op del" data-idx="${idx}">删除</button>
+      </span>`;
+    el.querySelector('input[data-field="name"]').addEventListener("input", e => { managed[idx].name = e.target.value; });
+    el.querySelector('input[data-field="url"]').addEventListener("input", e => { managed[idx].url = e.target.value; });
+    el.querySelector(".del").addEventListener("click", () => { managed.splice(idx, 1); renderRows(); });
+    el.querySelector(".test").addEventListener("click", (e) => testRow(idx, e.target));
+    rowsEl.appendChild(el);
+  });
+  setManageStatus("共 " + managed.length + " 条指令，修改后点击保存生效");
+}
+
+function escapeAttr(s) { return String(s).replace(/"/g, "&quot;").replace(/</g, "&lt;"); }
+
+async function testRow(idx, btn) {
+  if (!bridge) { setManageStatus("未连接后端，无法测试", true); return; }
+  const row = managed[idx];
+  if (!row || !/^https?:\/\//.test(row.url)) {
+    setManageStatus("该行地址无效，无法测试", true);
+    return;
+  }
+  const cell = document.querySelector('.tresult[data-idx="' + idx + '"]');
+  btn.disabled = true;
+  btn.textContent = "测试中…";
+  cell.textContent = "检测中…";
+  cell.style.color = "var(--fg-2)";
+  try {
+    const res = await bridge.apiPost("config/test", { url: row.url });
+    if (res.ok) {
+      cell.textContent = "✅ " + res.status + " · " + res.elapsed_ms + "ms" + (res.is_image ? " · 图片" : "");
+      cell.style.color = "var(--green)";
+    } else {
+      cell.textContent = "❌ " + (res.error || ("HTTP " + res.status)) + " · " + res.elapsed_ms + "ms";
+      cell.style.color = "var(--red)";
+    }
+  } catch (err) {
+    cell.textContent = "❌ " + (err.message || "请求失败");
+    cell.style.color = "var(--red)";
+  }
+  btn.disabled = false;
+  btn.textContent = "测试";
+}
+
+function loadManage() {
+  if (!liveApiMap) return;
+  managed = Object.keys(liveApiMap).map(k => ({ name: k, url: liveApiMap[k] }));
+  renderRows();
+}
+
+document.getElementById("m-add-row").addEventListener("click", () => {
+  const n = document.getElementById("m-new-name").value.trim();
+  const u = document.getElementById("m-new-url").value.trim();
+  if (!n || !u) { setManageStatus("请输入指令名和接口地址", true); return; }
+  if (!/^https?:\/\//.test(u)) { setManageStatus("接口地址必须以 http(s):// 开头", true); return; }
+  if (managed.some(r => r.name === n)) { setManageStatus("指令名「" + n + "」已存在", true); return; }
+  managed.push({ name: n, url: u });
+  document.getElementById("m-new-name").value = "";
+  document.getElementById("m-new-url").value = "";
+  renderRows();
+});
+document.getElementById("m-add").addEventListener("click", () => {
+  document.getElementById("m-new-name").focus();
+});
+document.getElementById("m-reset").addEventListener("click", () => loadManage());
+document.getElementById("m-save").addEventListener("click", async (e) => {
+  if (!bridge) { setManageStatus("未连接后端", true); return; }
+  const btn = e.target;
+  // 过滤空行与校验
+  const clean = managed
+    .map(r => ({ name: r.name.trim(), url: r.url.trim() }))
+    .filter(r => r.name && r.url);
+  for (const r of clean) {
+    if (!/^https?:\/\//.test(r.url)) { setManageStatus("无效地址: " + r.url, true); return; }
+  }
+  btn.textContent = "保存中…";
+  try {
+    const api_map = clean.map(r => r.name + "|" + r.url);
+    const res = await bridge.apiPost("config/save", { api_map });
+    liveApiMap = {};
+    clean.forEach(r => { liveApiMap[r.name] = r.url; });
+    setManageStatus("✅ 已保存 " + clean.length + " 条指令，立即生效");
+    await loadLiveConfig();
+  } catch (err) {
+    setManageStatus("保存失败: " + (err.message || err), true);
+  }
+  btn.textContent = "💾 保存全部修改";
+});
+
+/* ---------- 模式切换 ---------- */
+document.querySelectorAll(".mode").forEach(m => {
+  m.addEventListener("click", () => {
+    document.querySelectorAll(".mode").forEach(x => x.classList.remove("active"));
+    m.classList.add("active");
+    const mode = m.dataset.mode;
+    document.getElementById("view-browse").style.display = mode === "browse" ? "" : "none";
+    document.getElementById("view-manage").classList.toggle("show", mode === "manage");
+    if (mode === "manage" && !managed.length) loadManage();
+  });
 });
 
 document.getElementById("tabs").addEventListener("click", (e) => {

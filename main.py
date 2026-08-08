@@ -13,7 +13,7 @@ import aiohttp
 from astrbot.api import logger
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
-from astrbot.api.web import json_response
+from astrbot.api.web import error_response, json_response, request
 
 # 默认 API 映射：指令名 -> 接口地址（可在 AstrBot 管理面板的插件配置中修改）
 DEFAULT_API_MAP = {
@@ -99,16 +99,29 @@ class KekeApiCollectionPlugin(Star):
         # 插件名取自 metadata.yaml 的 name，因此注册多个前缀以兼容各种加载方式。
         try:
             plugin_name = getattr(self, "name", None) or "astrbot_plugin_keke_api_collection"
-            for route in (
-                f"/{plugin_name}/config",
-                "/astrbot_plugin_keke_api_collection/config",
-                f"/{self.__class__.__name__}/config",
-            ):
+            prefixes = (
+                f"/{plugin_name}",
+                "/astrbot_plugin_keke_api_collection",
+                f"/{self.__class__.__name__}",
+            )
+            for prefix in prefixes:
                 context.register_web_api(
-                    route,
+                    f"{prefix}/config",
                     self.page_config,
                     ["GET"],
                     "获取插件当前接口配置",
+                )
+                context.register_web_api(
+                    f"{prefix}/config/save",
+                    self.save_config,
+                    ["POST"],
+                    "保存插件接口配置",
+                )
+                context.register_web_api(
+                    f"{prefix}/config/test",
+                    self.test_api,
+                    ["POST"],
+                    "测试接口可用性",
                 )
         except Exception as e:
             logger.warning(f"注册插件页面 API 失败: {e}")
@@ -166,6 +179,81 @@ class KekeApiCollectionPlugin(Star):
     def _get_url(self, name: str) -> str | None:
         """根据指令名（含别名）获取接口地址。"""
         return self.api_map.get(name) or self.api_map.get(ALIAS_MAP.get(name, ""))
+
+    async def save_config(self):
+        """WebUI 页面使用的接口配置保存（立即生效，无需重载插件）。"""
+        payload = await request.json(default={})
+        new_map = payload.get("api_map")
+        if not isinstance(new_map, list) or not new_map:
+            return error_response("api_map 必须是非空列表", status_code=400)
+        cleaned = []
+        for entry in new_map:
+            if not isinstance(entry, str):
+                return error_response("条目格式错误（应为 指令名|接口地址）", status_code=400)
+            name, _, url = entry.partition("|")
+            name, url = name.strip(), url.strip()
+            if not name or not url.startswith(("http://", "https://")):
+                return error_response(f"无效条目: {entry}", status_code=400)
+            cleaned.append(f"{name}|{url}")
+        # 持久化到 AstrBot 配置
+        if self.config is not None:
+            self.config["api_map"] = cleaned
+            try:
+                await self.config.save_config_async()
+            except Exception:
+                self.config.save_config()
+        # 更新内存，立即生效
+        self.api_map = {}
+        for e in cleaned:
+            n, _, u = e.partition("|")
+            self.api_map[n.strip()] = u.strip()
+        self.custom_commands = {
+            k: v for k, v in self.api_map.items() if k not in BUILTIN_COMMANDS
+        }
+        logger.info(f"柯柯API集合配置已保存: {len(self.api_map)} 条指令")
+        return json_response(
+            {
+                "saved": True,
+                "count": len(self.api_map),
+                "custom_commands": list(self.custom_commands.keys()),
+            }
+        )
+
+    async def test_api(self):
+        """WebUI 页面使用的接口连通性测试。"""
+        import time
+        payload = await request.json(default={})
+        url = payload.get("url", "")
+        if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+            return error_response("无效接口地址", status_code=400)
+        start = time.time()
+        try:
+            timeout = aiohttp.ClientTimeout(total=8)
+            async with self.session_lock:
+                if self.session is None or self.session.closed:
+                    self.session = aiohttp.ClientSession()
+            headers = {"User-Agent": self.user_agent}
+            async with self.session.get(url, headers=headers, timeout=timeout) as resp:
+                content_type = resp.headers.get("Content-Type", "")
+                body = await resp.content.read(256)
+                elapsed = round((time.time() - start) * 1000)
+                is_image = content_type.startswith("image/")
+                return json_response(
+                    {
+                        "ok": resp.status == 200,
+                        "status": resp.status,
+                        "content_type": content_type or "未知",
+                        "size": len(body),
+                        "elapsed_ms": elapsed,
+                        "is_image": is_image,
+                    }
+                )
+        except asyncio.TimeoutError:
+            return json_response({"ok": False, "status": 0, "error": "请求超时", "elapsed_ms": 8000})
+        except aiohttp.ClientError as e:
+            return json_response({"ok": False, "status": 0, "error": f"连接失败: {e.__class__.__name__}", "elapsed_ms": round((time.time() - start) * 1000)})
+        except Exception as e:
+            return json_response({"ok": False, "status": 0, "error": str(e)[:80], "elapsed_ms": round((time.time() - start) * 1000)})
 
     # ------------------------------------------------------------- 通用执行
     async def _run(self, api_name: str, event: AstrMessageEvent):
