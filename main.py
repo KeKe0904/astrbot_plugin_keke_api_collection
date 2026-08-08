@@ -126,6 +126,12 @@ class KekeApiCollectionPlugin(Star):
                     ["POST"],
                     "测试接口可用性",
                 )
+                context.register_web_api(
+                    f"{prefix}/config/ping",
+                    self.ping_all,
+                    ["POST"],
+                    "批量检测接口延迟",
+                )
         except Exception as e:
             logger.warning(f"注册插件页面 API 失败: {e}")
 
@@ -276,6 +282,83 @@ class KekeApiCollectionPlugin(Star):
             return json_response({"ok": False, "status": 0, "error": f"连接失败: {e.__class__.__name__}", "elapsed_ms": round((time.time() - start) * 1000)})
         except Exception as e:
             return json_response({"ok": False, "status": 0, "error": str(e)[:80], "elapsed_ms": round((time.time() - start) * 1000)})
+
+    async def ping_all(self):
+        """批量检测所有接口延迟，按延迟排序返回。"""
+        import time
+        payload = await request.json(default={})
+        requested = payload.get("urls")
+        if isinstance(requested, list) and requested:
+            # 按 URL 反查指令名
+            name_by_url = {}
+            for n, u in self.api_map.items():
+                name_by_url.setdefault(u, []).append(n)
+            targets = []
+            for u in requested:
+                names = name_by_url.get(u) or [u]
+                for n in names:
+                    targets.append((n, u))
+        else:
+            targets = list(self.api_map.items())
+
+        sem = asyncio.Semaphore(10)
+
+        async def probe(name: str, url: str):
+            async with sem:
+                start = time.time()
+                try:
+                    timeout = aiohttp.ClientTimeout(total=8)
+                    async with self.session_lock:
+                        if self.session is None or self.session.closed:
+                            self.session = aiohttp.ClientSession()
+                    async with self.session.get(
+                        url,
+                        headers={"User-Agent": self.user_agent},
+                        timeout=timeout,
+                    ) as resp:
+                        await resp.content.read(128)
+                        elapsed = round((time.time() - start) * 1000)
+                        return {
+                            "name": name,
+                            "url": url,
+                            "ok": resp.status == 200,
+                            "status": resp.status,
+                            "elapsed_ms": elapsed,
+                        }
+                except asyncio.TimeoutError:
+                    return {"name": name, "url": url, "ok": False, "status": 0,
+                            "elapsed_ms": 8000, "error": "超时"}
+                except aiohttp.ClientError as e:
+                    return {"name": name, "url": url, "ok": False, "status": 0,
+                            "elapsed_ms": round((time.time() - start) * 1000),
+                            "error": e.__class__.__name__}
+                except Exception as e:
+                    return {"name": name, "url": url, "ok": False, "status": 0,
+                            "elapsed_ms": round((time.time() - start) * 1000),
+                            "error": str(e)[:40]}
+
+        results = await asyncio.gather(*(probe(n, u) for n, u in targets))
+        ok_list = sorted(
+            (r for r in results if r["ok"]), key=lambda r: r["elapsed_ms"]
+        )
+        fail_list = [r for r in results if not r["ok"]]
+        avg = (
+            round(sum(r["elapsed_ms"] for r in ok_list) / len(ok_list))
+            if ok_list
+            else 0
+        )
+        return json_response(
+            {
+                "ok": True,
+                "total": len(results),
+                "success": len(ok_list),
+                "failed": len(fail_list),
+                "avg_ms": avg,
+                "fastest": ok_list[0] if ok_list else None,
+                "slowest": ok_list[-1] if ok_list else None,
+                "results": ok_list + fail_list,
+            }
+        )
 
     # ------------------------------------------------------------- 通用执行
     async def _run(self, api_name: str, event: AstrMessageEvent):

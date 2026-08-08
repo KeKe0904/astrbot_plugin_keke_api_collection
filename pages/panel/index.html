@@ -198,6 +198,35 @@
 
   footer { margin-top: 26px; font-size: 12px; color: var(--fg-2); text-align: center; }
   footer code { font-family: var(--mono); font-size: 11px; background: var(--bg-card); border: 1px solid var(--border); padding: 2px 7px; border-radius: 6px; }
+
+  /* ---------- 测速结果弹窗 ---------- */
+  .modal-mask { display: none; position: fixed; inset: 0; background: rgba(20,20,26,0.5); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+  .modal-mask.show { display: flex; }
+  .modal {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
+    width: min(680px, 100%); max-height: 82vh; display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25); overflow: hidden;
+  }
+  .modal-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .modal-head h2 { font-size: 16px; font-weight: 700; font-family: "Yuanti SC", "YouYuan", sans-serif; flex: 1; }
+  .modal-close { border: 1px solid var(--border); background: transparent; color: var(--fg-2); border-radius: 999px; width: 30px; height: 30px; cursor: pointer; font-size: 14px; transition: all .15s; }
+  .modal-close:hover { border-color: var(--red); color: var(--red); }
+  .ping-summary { display: flex; gap: 12px; padding: 14px 20px; flex-wrap: wrap; background: var(--bg-soft); border-bottom: 1px solid var(--border); }
+  .ping-summary .ps { font-size: 12.5px; color: var(--fg-2); }
+  .ping-summary b { font-size: 17px; color: var(--fg); display: block; font-variant-numeric: tabular-nums; }
+  .ping-summary .ps.good b { color: var(--green); }
+  .ping-summary .ps.bad b { color: var(--red); }
+  .ping-summary .ps.accent b { color: var(--accent-deep); }
+  .ping-list { overflow-y: auto; padding: 8px 0; }
+  .ping-row { display: grid; grid-template-columns: 150px 90px 1fr; gap: 10px; padding: 7px 20px; align-items: center; font-size: 12.5px; }
+  .ping-row:nth-child(odd) { background: var(--bg-soft); }
+  .ping-row .pn { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ping-row .pm { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
+  .ping-row .pm.fast { color: var(--green); }
+  .ping-row .pm.mid { color: #f5a623; }
+  .ping-row .pm.slow { color: var(--red); }
+  .ping-row .pu { font-family: var(--mono); font-size: 10.5px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ping-empty { padding: 40px; text-align: center; color: var(--fg-2); font-size: 13px; }
 </style>
 </head>
 <body>
@@ -258,6 +287,7 @@
   <div class="manage" id="view-manage">
     <div class="m-toolbar">
       <button class="btn primary" id="m-save">💾 保存全部修改</button>
+      <button class="btn" id="m-ping">📶 批量测速</button>
       <button class="btn" id="m-add">+ 新增指令</button>
       <button class="btn" id="m-reset">重新加载</button>
       <span class="m-status" id="m-status">加载中…</span>
@@ -280,6 +310,17 @@
   </div>
 
   <footer>管理面板 → 插件配置 → <code>api_map</code> 也可编辑 · 指令名|接口地址</footer>
+</div>
+
+<div class="modal-mask" id="ping-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>批量测速</h2>
+      <button class="modal-close" id="ping-close">✕</button>
+    </div>
+    <div class="ping-summary" id="ping-summary"></div>
+    <div class="ping-list" id="ping-list"></div>
+  </div>
 </div>
 
 <script src="/api/plugin/page/bridge-sdk.js"></script>
@@ -599,6 +640,56 @@ document.getElementById("m-add").addEventListener("click", () => {
   document.getElementById("m-new-name").focus();
 });
 document.getElementById("m-reset").addEventListener("click", () => loadManage());
+
+/* ---------- 批量测速 ---------- */
+async function pingAll() {
+  if (!bridge) { setManageStatus("未连接后端，无法测速", true); return; }
+  const modal = document.getElementById("ping-modal");
+  const summary = document.getElementById("ping-summary");
+  const list = document.getElementById("ping-list");
+  const btn = document.getElementById("m-ping");
+  modal.classList.add("show");
+  summary.innerHTML = '<span class="ps">检测中…（并发 10，单接口 8s 超时）</span>';
+  list.innerHTML = '<div class="ping-empty">正在检测全部接口延迟，请稍候…</div>';
+  btn.disabled = true;
+  btn.textContent = "测速中…";
+  try {
+    const res = await bridge.apiPost("config/ping", {});
+    summary.innerHTML =
+      '<span class="ps good"><b>' + res.success + '</b>可用</span>' +
+      '<span class="ps bad"><b>' + res.failed + '</b>失败</span>' +
+      '<span class="ps accent"><b>' + res.avg_ms + 'ms</b>平均延迟</span>' +
+      '<span class="ps"><b>' + (res.fastest ? res.fastest.elapsed_ms + "ms" : "-") + '</b>最快</span>' +
+      '<span class="ps"><b>' + (res.slowest ? res.slowest.elapsed_ms + "ms" : "-") + '</b>最慢</span>';
+    list.innerHTML = "";
+    (res.results || []).forEach(r => {
+      const cls = !r.ok ? "slow" : r.elapsed_ms < 500 ? "fast" : r.elapsed_ms < 1500 ? "mid" : "slow";
+      const el = document.createElement("div");
+      el.className = "ping-row";
+      el.innerHTML = '<span class="pn">' + r.name + '</span>' +
+        '<span class="pm ' + cls + '">' + (r.ok ? r.elapsed_ms + "ms" : "✕ 失败") + '</span>' +
+        '<span class="pu" title="' + r.url + '">' + r.url + '</span>';
+      list.appendChild(el);
+    });
+    if (!(res.results || []).length) list.innerHTML = '<div class="ping-empty">没有可检测的接口</div>';
+    // 同步更新管理表格每行状态列
+    (res.results || []).forEach(r => {
+      const idx = managed.findIndex(m => m.name === r.name);
+      const cell = document.querySelector('.tresult[data-idx="' + idx + '"]');
+      if (cell) {
+        cell.textContent = r.ok ? r.elapsed_ms + "ms" : "✕ 失败";
+        cell.style.color = r.ok ? "var(--green)" : "var(--red)";
+      }
+    });
+  } catch (err) {
+    list.innerHTML = '<div class="ping-empty">测速失败: ' + (err.message || err) + '</div>';
+  }
+  btn.disabled = false;
+  btn.textContent = "批量测速";
+}
+document.getElementById("m-ping").addEventListener("click", pingAll);
+document.getElementById("ping-close").addEventListener("click", () => document.getElementById("ping-modal").classList.remove("show"));
+document.getElementById("ping-modal").addEventListener("click", (e) => { if (e.target.id === "ping-modal") e.target.classList.remove("show"); });
 document.getElementById("m-save").addEventListener("click", async (e) => {
   if (!bridge) { setManageStatus("未连接后端", true); return; }
   const btn = e.target;

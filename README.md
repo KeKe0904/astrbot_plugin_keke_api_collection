@@ -4,7 +4,7 @@
 
 **AstrBot 多功能 API 聚合插件 —— 图片 · 壁纸 · 文案 · 动物 · 音乐 · 视频，一个插件全部搞定**
 
-[![Version](https://img.shields.io/badge/version-v2.0.6-0071e3.svg)](https://github.com/KeKe0904/astrbot_plugin_keke_api_collection)
+[![Version](https://img.shields.io/badge/version-v2.0.7-0071e3.svg)](https://github.com/KeKe0904/astrbot_plugin_keke_api_collection)
 [![AstrBot](https://img.shields.io/badge/AstrBot-%3E%3D3.5.19-409cff.svg)](https://github.com/AstrBotDevs/AstrBot)
 [![APIs](https://img.shields.io/badge/API-513%2B-34c759.svg)](500源总清单.md)
 [![License](https://img.shields.io/badge/License-MIT-gray.svg)](LICENSE)
@@ -30,7 +30,7 @@
 | ✅ 532 条指令开箱即用 | 33 个内置指令 + 499 个全量接口，全部预置直接可用 |
 | ✅ 面板配置化 | `_conf_schema.json` 声明，WebUI 可视化编辑 `api_map` |
 | ✅ 自定义指令 | 配置新增的指令名自动注册，无需写代码 |
-| ✅ WebUI 指令管理 | 展示全部指令，可增删改、一键保存、逐条测试连通性 |
+| ✅ WebUI 指令管理 | 展示全部指令，可增删改、一键保存、逐条测试 + 批量测速 |
 | ✅ 请求增强 | UA 伪装、指数退避重试、429/5xx 处理、Retry-After 尊重 |
 | ✅ 响应智能识别 | 图片 / 音频 / 视频 / JSON / 文本自动解析 |
 | ✅ 接口大换血 | 全部接口 2026-08-08 实测，替换全部失效源 |
