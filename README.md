@@ -4,7 +4,7 @@
 
 **AstrBot 多功能 API 聚合插件 —— 图片 · 壁纸 · 文案 · 动物 · 音乐 · 视频，一个插件全部搞定**
 
-[![Version](https://img.shields.io/badge/version-v2.0.0-0071e3.svg)](https://github.com/KeKe0904/astrbot_plugin_keke_api_collection)
+[![Version](https://img.shields.io/badge/version-v2.0.1-0071e3.svg)](https://github.com/KeKe0904/astrbot_plugin_keke_api_collection)
 [![AstrBot](https://img.shields.io/badge/AstrBot-%3E%3D3.5.19-409cff.svg)](https://github.com/AstrBotDevs/AstrBot)
 [![APIs](https://img.shields.io/badge/API-513%2B-34c759.svg)](500源总清单.md)
 [![License](https://img.shields.io/badge/License-MIT-gray.svg)](LICENSE)
@@ -27,7 +27,7 @@
 | 特性 | 说明 |
 |------|------|
 | ✅ 新版 AstrBot 适配 | 移除废弃 `@register`，支持 AstrBot 4.x（>= 3.5.19 自动识别 Star 类） |
-| ✅ 33 个内置指令 | 图片 / 壁纸 / 文案 / 动物 / 音乐 / 视频 六大类开箱即用 |
+| ✅ 532 条指令开箱即用 | 33 个内置指令 + 499 个全量接口，全部预置直接可用 |
 | ✅ 面板配置化 | `_conf_schema.json` 声明，WebUI 可视化编辑 `api_map` |
 | ✅ 自定义指令 | 配置新增的指令名自动注册，无需写代码 |
 | ✅ WebUI 插件页面 | AstrBot 插件详情页内嵌「接口管理」面板 |
@@ -55,6 +55,8 @@ git clone https://github.com/KeKe0904/astrbot_plugin_keke_api_collection
 2. 在 AstrBot WebUI 或命令行重载插件。
 
 ### 使用
+
+**500+ 接口全部开箱即用**：安装插件后，除 33 个内置指令外，499 个全量接口（图片/壁纸/文案/动物/音乐/视频/工具）已全部预置在 `api_map` 配置中，**直接发送接口指令名即可调用**，无需任何配置。
 
 在聊天中直接发送指令即可，例如：
 
@@ -150,7 +152,7 @@ B站热门         → 返回 B站 当前热门视频
 
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `api_map` | list | 33 条内置接口 | 指令映射表，格式 `指令名|接口地址`，每行一条 |
+| `api_map` | list | 532 条（33 内置 + 499 全量） | 指令映射表，格式 `指令名|接口地址`，全部预置，可增删改 |
 | `timeout` | int | 10 | 请求超时（秒） |
 | `max_retries` | int | 3 | 失败最大重试次数 |
 | `user_agent` | str | Chrome UA | 请求 UA（B站等接口需要） |

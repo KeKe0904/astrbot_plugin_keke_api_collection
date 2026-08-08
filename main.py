@@ -487,10 +487,13 @@ class KekeApiCollectionPlugin(Star):
             return
         msg = event.message_str.strip()
         matched = None
-        for name in self.custom_commands:
-            if msg == name or msg.endswith(name):
-                matched = name
-                break
+        if msg in self.custom_commands:
+            matched = msg
+        else:
+            for name in self.custom_commands:
+                if msg.endswith(name):
+                    matched = name
+                    break
         if not matched:
             return
         event.stop_event()
@@ -523,12 +526,19 @@ class KekeApiCollectionPlugin(Star):
             yield event.plain_result("获取设备信息失败，请稍后再试")
 
     def _generate_help_text(self):
+        custom_count = len(self.custom_commands)
         lines = ["【柯柯API集合】可用指令："]
-        for command in self.api_map:
+        # 只列出内置指令，500+ 全量接口不逐条展示
+        for command in DEFAULT_API_MAP:
             lines.append(f"- {command}")
+        if custom_count:
+            lines.append("")
+            lines.append(f"另有 {custom_count} 个预置接口指令（来自全量接口清单）")
+            lines.append("直接发送接口指令名即可使用，例如：二次元、壁纸、一言、猫图、网易云歌单…")
+            lines.append("完整清单见插件 WebUI「接口管理」页面或 500源总清单.md")
+        lines.append("")
         lines.append("- 设备信息")
         lines.append("- 帮助 / 菜单")
-        lines.append("\n发送「帮助」查看全部指令，接口可在插件配置面板中增删")
         return "\n".join(lines)
 
     @filter.command("帮助")
