@@ -94,14 +94,22 @@ class KekeApiCollectionPlugin(Star):
         self.api_map = {}
         self.custom_commands = {}
         self._load_config()
-        # 插件页面后端 API：供 WebUI 查询当前生效的接口配置
+        # 插件页面后端 API：供 WebUI 查询当前生效的接口配置。
+        # bridge 转发路径为 /api/v1/plugins/extensions/{插件名}/config，
+        # 插件名取自 metadata.yaml 的 name，因此注册多个前缀以兼容各种加载方式。
         try:
-            context.register_web_api(
+            plugin_name = getattr(self, "name", None) or "astrbot_plugin_keke_api_collection"
+            for route in (
+                f"/{plugin_name}/config",
+                "/astrbot_plugin_keke_api_collection/config",
                 f"/{self.__class__.__name__}/config",
-                self.page_config,
-                ["GET"],
-                "获取插件当前接口配置",
-            )
+            ):
+                context.register_web_api(
+                    route,
+                    self.page_config,
+                    ["GET"],
+                    "获取插件当前接口配置",
+                )
         except Exception as e:
             logger.warning(f"注册插件页面 API 失败: {e}")
 

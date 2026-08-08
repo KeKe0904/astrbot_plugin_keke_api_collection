@@ -6,23 +6,28 @@
 <title>柯柯API集合 · 接口管理</title>
 <style>
   :root {
-    --bg: #fafafa;
+    --bg: #f5f5f7;
     --bg-card: #ffffff;
     --fg: #1d1d1f;
-    --fg-2: #86868b;
+    --fg-2: #6e6e73;
     --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.14);
     --accent: #0071e3;
     --accent-bg: rgba(0,113,227,0.08);
+    --green: #34c759;
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --radius: 12px;
   }
   [data-theme="dark"] {
     --bg: #101012;
     --bg-card: #1c1c1f;
     --fg: #f5f5f7;
     --fg-2: #98989d;
-    --border: rgba(255,255,255,0.1);
+    --border: rgba(255,255,255,0.09);
+    --border-strong: rgba(255,255,255,0.16);
     --accent: #409cff;
-    --accent-bg: rgba(64,156,255,0.14);
+    --accent-bg: rgba(64,156,255,0.13);
+    --green: #30d158;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -32,72 +37,83 @@
     color: var(--fg);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    font-size: 14px;
   }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 80px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 28px 72px; }
 
-  header { margin-bottom: 28px; }
-  .kicker { font-size: 12px; letter-spacing: 0.12em; color: var(--fg-2); text-transform: uppercase; margin-bottom: 8px; }
-  h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
-  .sub { color: var(--fg-2); font-size: 14px; margin-top: 6px; }
-  .stats { display: flex; gap: 28px; margin-top: 20px; flex-wrap: wrap; }
-  .stat b { font-size: 22px; font-weight: 650; display: block; font-variant-numeric: tabular-nums; }
-  .stat span { font-size: 12px; color: var(--fg-2); }
+  /* ---------- 头部：左对齐紧凑 ---------- */
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 22px; }
+  .kicker { font-size: 11px; letter-spacing: 0.14em; color: var(--fg-2); text-transform: uppercase; margin-bottom: 6px; }
+  h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+  .sub { color: var(--fg-2); font-size: 13px; margin-top: 4px; }
+  .stats { display: flex; gap: 26px; }
+  .stat { text-align: right; }
+  .stat b { font-size: 20px; font-weight: 650; display: block; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .stat span { font-size: 11px; color: var(--fg-2); }
 
-  /* 生效配置 */
+  /* ---------- 生效指令横条 ---------- */
   .live {
     background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;
+    border-radius: var(--radius); padding: 14px 18px; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   }
-  .live h2 { font-size: 15px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
-  .live .hint { font-size: 12px; color: var(--fg-2); margin-top: 4px; }
-  .live .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .live .lv-title { font-size: 13px; font-weight: 650; flex: none; white-space: nowrap; }
+  .live .chips { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 200px; padding-bottom: 2px; scrollbar-width: thin; }
   .chip {
-    font-size: 12px; padding: 4px 10px; border-radius: 999px;
-    background: var(--accent-bg); color: var(--accent); font-weight: 500;
+    flex: none; font-size: 12px; padding: 3px 10px; border-radius: 999px;
+    background: var(--accent-bg); color: var(--accent); font-weight: 500; cursor: default;
   }
   .chip.custom { background: rgba(255,149,0,0.14); color: #c77d00; }
   [data-theme="dark"] .chip.custom { color: #ffb340; }
-  .live .tools { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .live .tools { display: flex; gap: 8px; flex: none; }
   .btn {
-    border: 1px solid var(--border); background: transparent; color: var(--fg);
-    border-radius: 8px; font-size: 12px; padding: 7px 14px; cursor: pointer;
-    font-family: inherit; transition: all .15s;
+    border: 1px solid var(--border); background: transparent; color: var(--fg-2);
+    border-radius: 8px; font-size: 12px; padding: 6px 12px; cursor: pointer;
+    font-family: inherit; transition: all .15s; white-space: nowrap;
   }
   .btn:hover { border-color: var(--accent); color: var(--accent); }
-  .btn.done { border-color: #34c759; color: #34c759; }
-  .live .status-line { font-size: 12px; color: var(--fg-2); margin-top: 10px; }
+  .btn.done { border-color: var(--green); color: var(--green); }
+  .live .status-line { font-size: 11.5px; color: var(--fg-2); flex: none; }
   .live .status-line.error { color: #ff3b30; }
   .cfg-text {
-    display: none; margin-top: 12px; background: var(--bg);
+    display: none; width: 100%; margin-top: 10px; background: var(--bg);
     border: 1px solid var(--border); border-radius: 10px;
-    font-family: var(--mono); font-size: 11.5px; color: var(--fg-2);
+    font-family: var(--mono); font-size: 11px; color: var(--fg-2);
     padding: 12px 14px; max-height: 200px; overflow: auto; white-space: pre;
   }
   .cfg-text.show { display: block; }
 
-  .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  /* ---------- 工具栏 ---------- */
+  .toolbar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
   input[type="search"] {
-    flex: 1; min-width: 220px; background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 10px; color: var(--fg); padding: 10px 14px; font-size: 14px;
-    outline: none; transition: border-color .15s;
+    flex: 1; min-width: 240px; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--fg); padding: 9px 14px; font-size: 13px;
+    outline: none; transition: border-color .15s, box-shadow .15s;
   }
-  input[type="search"]:focus { border-color: var(--accent); }
-  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  input[type="search"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+  .tabs { display: flex; gap: 5px; flex-wrap: wrap; }
   .tab {
     border: 1px solid var(--border); background: transparent; color: var(--fg-2);
-    border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer;
+    border-radius: 999px; padding: 5px 13px; font-size: 12.5px; cursor: pointer;
     transition: all .15s; font-family: inherit;
   }
   .tab:hover { color: var(--fg); }
-  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tab.active { background: var(--fg); border-color: var(--fg); color: var(--bg); }
   .count { font-size: 12px; color: var(--fg-2); margin-left: auto; font-variant-numeric: tabular-nums; }
 
-  .list { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
-  .item { display: flex; align-items: center; gap: 14px; padding: 13px 18px; border-bottom: 1px solid var(--border); transition: background .12s; }
-  .item:last-child { border-bottom: none; }
-  .item:hover { background: var(--accent-bg); }
-  .item.hidden { display: none; }
-  .badge { flex: none; font-size: 11px; padding: 3px 9px; border-radius: 6px; font-weight: 600; letter-spacing: 0.02em; }
+  /* ---------- 卡片网格 ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+    transition: border-color .15s, transform .15s;
+  }
+  .card:hover { border-color: var(--border-strong); }
+  .card-top { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot.ok { background: var(--green); }
+  .dot.cand { background: #aeaeb2; }
+  .badge { flex: none; font-size: 10.5px; padding: 2px 8px; border-radius: 5px; font-weight: 600; letter-spacing: 0.02em; }
   .badge-img   { background: rgba(255,149,0,0.14);  color: #c77d00; }
   .badge-wall  { background: rgba(0,122,255,0.13);   color: #0066cc; }
   .badge-text  { background: rgba(52,199,89,0.13);   color: #248a3d; }
@@ -112,39 +128,38 @@
   [data-theme="dark"] .badge-music { color: #cd8cff; }
   [data-theme="dark"] .badge-video { color: #ff7a72; }
   [data-theme="dark"] .badge-tool  { color: #b0b0b6; }
-  .info { flex: 1; min-width: 0; }
-  .name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-  .dot.ok { background: #34c759; }
-  .dot.cand { background: #aeaeb2; }
-  .note { font-size: 12px; color: var(--fg-2); margin-top: 2px; }
-  .url {
-    font-family: var(--mono); font-size: 11.5px; color: var(--fg-2);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 340px; display: block; margin-top: 3px;
+  .card .name { font-size: 13.5px; font-weight: 600; line-height: 1.3; }
+  .card .note { font-size: 12px; color: var(--fg-2); }
+  .card .url {
+    font-family: var(--mono); font-size: 11px; color: var(--fg-2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl;
+    text-align: left;
   }
+  .card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 4px; }
   .copy {
-    flex: none; border: 1px solid var(--border); background: transparent; color: var(--fg);
-    border-radius: 8px; font-size: 12px; padding: 7px 12px; cursor: pointer;
+    flex: none; border: 1px solid var(--border); background: transparent; color: var(--fg-2);
+    border-radius: 7px; font-size: 11.5px; padding: 5px 10px; cursor: pointer;
     font-family: inherit; transition: all .15s;
   }
   .copy:hover { border-color: var(--accent); color: var(--accent); }
-  .copy.done { border-color: #34c759; color: #34c759; }
-  .empty { padding: 48px 20px; text-align: center; color: var(--fg-2); font-size: 14px; }
+  .copy.done { border-color: var(--green); color: var(--green); }
+  .empty { grid-column: 1 / -1; padding: 56px 20px; text-align: center; color: var(--fg-2); font-size: 13px; }
 
-  footer { margin-top: 28px; font-size: 12px; color: var(--fg-2); text-align: center; }
+  footer { margin-top: 26px; font-size: 12px; color: var(--fg-2); }
   footer code { font-family: var(--mono); font-size: 11px; background: var(--bg-card); border: 1px solid var(--border); padding: 2px 7px; border-radius: 6px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="kicker">Keke API Collection · v2.0.0</div>
-    <h1>柯柯API集合</h1>
-    <div class="sub">全年龄图片 / 壁纸 / 文案 / 动物 / 音乐 / 视频接口清单，全部经过 HTTP 200 实测验证</div>
+    <div>
+      <div class="kicker">Keke API Collection · v2.0.2</div>
+      <h1>柯柯API集合</h1>
+      <div class="sub">全年龄图片 / 壁纸 / 文案 / 动物 / 音乐 / 视频接口 · 全部实测验证</div>
+    </div>
     <div class="stats">
-      <div class="stat"><b id="st-total">0</b><span>接口总数</span></div>
-      <div class="stat"><b id="st-img">0</b><span>图片</span></div>
+      <div class="stat"><b id="st-total">0</b><span>接口</span></div>
+      <div class="stat"><b id="st-img">0</b><span>图片/壁纸</span></div>
       <div class="stat"><b id="st-text">0</b><span>文案</span></div>
       <div class="stat"><b id="st-music">0</b><span>音乐</span></div>
       <div class="stat"><b id="st-video">0</b><span>视频</span></div>
@@ -152,19 +167,17 @@
   </header>
 
   <section class="live">
-    <h2>当前生效指令
-      <span class="hint" id="live-hint">（从插件后端实时读取）</span>
-    </h2>
+    <div class="lv-title">生效指令</div>
     <div class="chips" id="chips"><span class="chip">连接中…</span></div>
     <div class="tools">
-      <button class="btn" id="copy-cfg">复制 api_map 配置</button>
-      <button class="btn" id="toggle-cfg">查看配置文本</button>
+      <button class="btn" id="copy-cfg">复制配置</button>
+      <button class="btn" id="toggle-cfg">查看配置</button>
     </div>
-    <div class="cfg-text" id="cfg-text"></div>
     <div class="status-line" id="live-status"></div>
+    <div class="cfg-text" id="cfg-text"></div>
   </section>
 
-  <div class="controls">
+  <div class="toolbar">
     <input type="search" id="search" placeholder="搜索接口名称或地址…">
     <div class="tabs" id="tabs">
       <button class="tab active" data-cat="全部">全部</button>
@@ -179,15 +192,15 @@
     <div class="count" id="count"></div>
   </div>
 
-  <div class="list" id="list"></div>
-  <footer>在管理面板的插件配置中修改 <code>api_map</code> 可增删接口（格式：指令名|接口地址）</footer>
+  <div class="grid" id="grid"></div>
+  <footer>管理面板 → 插件配置 → <code>api_map</code> 可增删接口（格式：指令名|接口地址）· 修改后重载插件生效</footer>
 </div>
 
 <script src="/api/plugin/page/bridge-sdk.js"></script>
 <script>
 const CATS = {"图片":"badge-img","壁纸":"badge-wall","文案":"badge-text","动物":"badge-animal","音乐":"badge-music","视频":"badge-video","工具":"badge-tool"};
 const DATA = [
-["摸鱼日历","图片","https://openapi.dwo.cc/api/moyuya","每日摸鱼日历 PNG 图片",1],
+["摸鱼日历","图片","https://openapi.dwo.cc/api/moyuya","每日摸鱼日历 PNG",1],
 ["美女","图片","https://openapi.dwo.cc/api/pc_mn","随机美女图片",1],
 ["图片","图片","https://openapi.dwo.cc/api/yrcmcx","随机图片",1],
 ["少女图","图片","https://api.anosu.top/img?type=girl","二次元少女图",1],
@@ -200,7 +213,6 @@ const DATA = [
 ["漫画图","图片","https://api.anosu.top/img?type=manhua","漫画图",1],
 ["Danbooru","图片","https://api.anosu.top/img?type=danbooru","Danbooru 图源",1],
 ["DMoe","图片","https://www.dmoe.cc/random.php","二次元随机图",1],
-["DMoe-JSON","图片","https://www.dmoe.cc/random.php?return=json","返回图片链接 JSON",1],
 ["Picsum","图片","https://picsum.photos/800/600","Unsplash 随机照片",1],
 ["LoremFlickr","图片","https://loremflickr.com/800/600","按标签随机图",1],
 ["AI人脸","图片","https://thispersondoesnotexist.com","AI 生成人脸",1],
@@ -267,14 +279,14 @@ const DATA = [
 ["iTunes搜索","音乐","https://itunes.apple.com/search?term=love&media=music&limit=1","iTunes 音乐搜索",1],
 ["Deezer榜单","音乐","https://api.deezer.com/chart/0/tracks","Deezer 热门榜单",1],
 ["Deezer搜索","音乐","https://api.deezer.com/search?q=love&limit=1","Deezer 搜索",1],
-["B站热门","视频","https://api.bilibili.com/x/web-interface/popular?ps=1","B站热门视频(需UA)",1],
+["B站热门","视频","https://api.bilibili.com/x/web-interface/popular?ps=1","B站热门视频",1],
 ["B站排行榜","视频","https://api.bilibili.com/x/web-interface/ranking?rid=0&type=all","B站全站排行",1],
 ["B站分区","视频","https://api.bilibili.com/x/web-interface/region?rid=1&pn=1","B站分区视频",0],
 ["小易视频","视频","https://api.xygeng.cn/video","随机视频",1],
 ["小易抖音","视频","https://api.xygeng.cn/douyin","抖音视频",1],
 ["小易快手","视频","https://api.xygeng.cn/kuaishou","快手视频",1],
 ["小易MV","视频","https://api.xygeng.cn/mv","MV",1],
-["Dailymotion","视频","https://api.dailymotion.com/videos?fields=id,title","Dailymotion 视频搜索",0],
+["Dailymotion","视频","https://api.dailymotion.com/videos?fields=id,title","Dailymotion 搜索",0],
 ["头像","工具","https://api.dicebear.com/9.x/bottts/svg?seed=keke","机器人头像",1],
 ["Dicebear-像素","工具","https://api.dicebear.com/9.x/pixel-art/svg?seed=keke","像素头像",1],
 ["Dicebear-冒险","工具","https://api.dicebear.com/9.x/adventurer/svg?seed=keke","冒险家头像",1],
@@ -296,7 +308,7 @@ const DATA = [
 ["RestCountries","工具","https://restcountries.com/v3.1/all","国家数据",0],
 ];
 
-const listEl = document.getElementById("list");
+const gridEl = document.getElementById("grid");
 const countEl = document.getElementById("count");
 const searchEl = document.getElementById("search");
 let curCat = "全部";
@@ -304,7 +316,7 @@ let curCat = "全部";
 function render() {
   const q = searchEl.value.trim().toLowerCase();
   let visible = 0;
-  listEl.innerHTML = "";
+  gridEl.innerHTML = "";
   DATA.forEach((d) => {
     const [name, cat, url, note, ok] = d;
     const showCat = curCat === "全部" || cat === curCat;
@@ -312,27 +324,30 @@ function render() {
     if (!(showCat && showQ)) return;
     visible++;
     const el = document.createElement("div");
-    el.className = "item";
+    el.className = "card";
     el.innerHTML = `
-      <span class="dot ${ok ? "ok" : "cand"}"></span>
-      <span class="badge ${CATS[cat]}">${cat}</span>
-      <div class="info">
-        <div class="name">${name}</div>
-        <div class="url" title="${url}">${url}</div>
-        <div class="note">${note}${ok ? "" : " · 候选(未实测)"}</div>
+      <div class="card-top">
+        <span class="dot ${ok ? "ok" : "cand"}"></span>
+        <span class="badge ${CATS[cat]}">${cat}</span>
+        <span class="name">${name}</span>
       </div>
-      <button class="copy" data-url="${url}">复制</button>`;
+      <div class="note">${note}${ok ? "" : " · 候选"}</div>
+      <div class="url" title="${url}">${url}</div>
+      <div class="card-foot">
+        <span class="count" style="margin:0"></span>
+        <button class="copy" data-url="${url}">复制地址</button>
+      </div>`;
     el.querySelector(".copy").addEventListener("click", (e) => {
       const btn = e.target;
       navigator.clipboard.writeText(url).then(() => {
         btn.textContent = "已复制"; btn.classList.add("done");
-        setTimeout(() => { btn.textContent = "复制"; btn.classList.remove("done"); }, 1500);
+        setTimeout(() => { btn.textContent = "复制地址"; btn.classList.remove("done"); }, 1500);
       });
     });
-    listEl.appendChild(el);
+    gridEl.appendChild(el);
   });
   countEl.textContent = "显示 " + visible + " / " + DATA.length;
-  if (!visible) listEl.innerHTML = '<div class="empty">没有匹配的接口</div>';
+  if (!visible) gridEl.innerHTML = '<div class="empty">没有匹配的接口</div>';
 }
 
 function calcStats() {
@@ -345,7 +360,7 @@ function calcStats() {
   document.getElementById("st-video").textContent = c["视频"];
 }
 
-/* ---------- bridge: 读取插件后端配置 ---------- */
+/* ---------- bridge ---------- */
 const statusEl = document.getElementById("live-status");
 const chipsEl = document.getElementById("chips");
 const cfgTextEl = document.getElementById("cfg-text");
@@ -380,25 +395,23 @@ async function loadLiveConfig() {
       chip.title = liveApiMap[name];
       chipsEl.appendChild(chip);
     });
-    statusEl.textContent = "已连接后端 · 共 " + names.length + " 个生效指令 · 自定义 " + custom.length + " 个";
+    statusEl.textContent = "已连接 · " + names.length + " 个生效指令 · 自定义 " + custom.length;
     statusEl.classList.remove("error");
     cfgTextEl.textContent = names.map(n => n + "|" + liveApiMap[n]).join("\n");
   } catch (e) {
-    chipsEl.innerHTML = '<span class="chip">后端连接失败（独立预览模式）</span>';
-    statusEl.textContent = "未连接到插件后端，显示内置示例数据。安装插件后此处会实时显示配置。";
+    chipsEl.innerHTML = '<span class="chip">未连接（独立预览）</span>';
+    statusEl.textContent = "无法连接到插件后端，显示内置示例数据。";
     statusEl.classList.add("error");
   }
 }
 
 document.getElementById("copy-cfg").addEventListener("click", (e) => {
-  if (!liveApiMap) return loadLiveConfig().then(() => {
-    copyText(cfgTextEl.textContent, e.target, "已复制配置");
-  });
-  copyText(cfgTextEl.textContent, e.target, "已复制配置");
+  if (!liveApiMap) return loadLiveConfig().then(() => copyText(cfgTextEl.textContent, e.target, "已复制"));
+  copyText(cfgTextEl.textContent, e.target, "已复制");
 });
 document.getElementById("toggle-cfg").addEventListener("click", (e) => {
   cfgTextEl.classList.toggle("show");
-  e.target.textContent = cfgTextEl.classList.contains("show") ? "收起配置文本" : "查看配置文本";
+  e.target.textContent = cfgTextEl.classList.contains("show") ? "收起配置" : "查看配置";
 });
 
 document.getElementById("tabs").addEventListener("click", (e) => {
