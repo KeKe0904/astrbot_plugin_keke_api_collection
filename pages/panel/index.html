@@ -39,6 +39,7 @@
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
+    overflow-x: clip;
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
                  "Microsoft YaHei", "Segoe UI", sans-serif;
     background: var(--bg);
@@ -228,8 +229,51 @@
   .ping-row .pt { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: var(--bg-soft); color: var(--fg-2); text-align: center; border: 1px solid var(--border); }
   .ping-row .pu { font-family: var(--mono); font-size: 10.5px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ping-empty { padding: 40px; text-align: center; color: var(--fg-2); font-size: 13px; }
+  .ping-progress { padding: 12px 20px 4px; display: flex; align-items: center; gap: 12px; }
+  .ping-track { flex: 1; height: 7px; background: var(--bg-soft); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+  .ping-bar { display: block; height: 100%; width: 0%; background: var(--accent); border-radius: 999px; transition: width .25s ease; }
+  .ping-count { font-size: 12px; color: var(--fg-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .modal-foot { display: flex; gap: 10px; align-items: center; padding: 12px 20px; border-top: 1px solid var(--border); }
   .modal-foot .pf-note { font-size: 11.5px; color: var(--fg-2); }
+
+  /* ---------- 响应式 ---------- */
+  @media (max-width: 900px) {
+    .wrap { padding: 20px 16px 56px; }
+    .m-row, .m-new { grid-template-columns: 1fr 1fr; }
+    .m-row > input[data-field="name"] { grid-column: 1; }
+    .m-row > .url-input { grid-column: 1 / -1; }
+    .m-row > .tresult { grid-column: 1; text-align: right; }
+    .m-row > .switch { grid-column: 2; }
+    .m-row > span:last-child { grid-column: 1 / -1; }
+    .m-new { grid-template-columns: 1fr; gap: 8px; }
+    .ping-row { grid-template-columns: 1fr auto; }
+    .ping-row .pt { display: none; }
+    .ping-row .pu { grid-column: 1 / -1; }
+  }
+  @media (max-width: 640px) {
+    header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    h1 { font-size: 21px; }
+    .stats { width: 100%; justify-content: space-between; }
+    .stat { flex: 1; min-width: 0; padding: 8px 6px; }
+    .stat b { font-size: 16px; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+    .tab { flex: none; }
+    .count { margin-left: 0; }
+    .live { flex-direction: column; align-items: flex-start; }
+    .live .tools { width: 100%; flex-wrap: wrap; }
+    .chips { max-width: 100%; }
+    .m-row, .m-new { grid-template-columns: 1fr; }
+    .m-row > .url-input { grid-column: auto; }
+    .m-row > .tresult { grid-column: auto; text-align: left; }
+    .m-row > .switch { grid-column: auto; }
+    .m-row > span:last-child { grid-column: auto; }
+    .m-toolbar { flex-wrap: wrap; }
+    .modal { width: 100%; max-height: 92vh; border-radius: 14px; }
+    .ping-summary { gap: 8px; padding: 12px; }
+    .ping-row { padding: 7px 12px; }
+    .card { padding: 12px 14px; }
+  }
 </style>
 </head>
 <body>
@@ -322,6 +366,10 @@
       <button class="modal-close" id="ping-close">×</button>
     </div>
     <div class="ping-summary" id="ping-summary"></div>
+    <div class="ping-progress">
+      <div class="ping-track"><div class="ping-bar" id="ping-bar"></div></div>
+      <span class="ping-count" id="ping-count">等待开始…</span>
+    </div>
     <div class="ping-list" id="ping-list"></div>
     <div class="modal-foot">
       <button class="btn danger" id="ping-disable" disabled>禁用失效接口</button>
@@ -648,67 +696,129 @@ document.getElementById("m-add").addEventListener("click", () => {
 });
 document.getElementById("m-reset").addEventListener("click", () => loadManage());
 
-/* ---------- 批量检测 ---------- */
-async function pingAll() {
-  if (!bridge) { setManageStatus("未连接后端，无法测速", true); return; }
-  const modal = document.getElementById("ping-modal");
-  const summary = document.getElementById("ping-summary");
+/* ---------- 批量检测（SSE 实时进度） ---------- */
+let pingSubId = null;
+let livePingResults = [];
+
+function appendPingRow(r) {
   const list = document.getElementById("ping-list");
+  const empty = list.querySelector(".ping-empty");
+  if (empty) empty.remove();
+  const cls = !r.ok ? "slow" : r.elapsed_ms < 500 ? "fast" : r.elapsed_ms < 1500 ? "mid" : "slow";
+  const el = document.createElement("div");
+  el.className = "ping-row";
+  el.innerHTML = '<span class="pn">' + r.name + '</span>' +
+    '<span class="pm ' + cls + '">' + (r.ok ? r.elapsed_ms + "ms" : "失败") + '</span>' +
+    '<span class="pt">' + (r.response_type || "-") + '</span>' +
+    '<span class="pu" title="' + r.url + '">' + r.url + '</span>';
+  list.appendChild(el);
+}
+
+function renderPingSummary(s) {
+  const ts = Object.entries(s.type_stats || {})
+    .map(function (kv) { return kv[0] + "x" + kv[1]; }).join(" ");
+  document.getElementById("ping-summary").innerHTML =
+    '<span class="ps good"><b>' + s.success + '</b>可用</span>' +
+    '<span class="ps bad"><b>' + s.failed + '</b>失败</span>' +
+    '<span class="ps accent"><b>' + s.avg_ms + 'ms</b>平均延迟</span>' +
+    '<span class="ps"><b>' + (s.fastest ? s.fastest.elapsed_ms + "ms" : "-") + '</b>最快</span>' +
+    '<span class="ps"><b>' + (s.slowest ? s.slowest.elapsed_ms + "ms" : "-") + '</b>最慢</span>' +
+    (ts ? '<span class="ps"><b>' + ts + '</b>类型</span>' : "");
+}
+
+function renderPingList(results) {
+  const list = document.getElementById("ping-list");
+  list.innerHTML = "";
+  (results || []).forEach(function (r) {
+    const cls = !r.ok ? "slow" : r.elapsed_ms < 500 ? "fast" : r.elapsed_ms < 1500 ? "mid" : "slow";
+    const el = document.createElement("div");
+    el.className = "ping-row";
+    el.innerHTML = '<span class="pn">' + r.name + '</span>' +
+      '<span class="pm ' + cls + '">' + (r.ok ? r.elapsed_ms + "ms" : "失败") + '</span>' +
+      '<span class="pt">' + (r.response_type || "-") + '</span>' +
+      '<span class="pu" title="' + r.url + '">' + r.url + '</span>';
+    list.appendChild(el);
+  });
+  if (!(results || []).length) list.innerHTML = '<div class="ping-empty">没有可检测的接口</div>';
+}
+
+async function pingAll() {
+  if (!bridge) { setManageStatus("未连接后端，无法检测", true); return; }
+  const modal = document.getElementById("ping-modal");
+  const bar = document.getElementById("ping-bar");
+  const countEl = document.getElementById("ping-count");
   const btn = document.getElementById("m-ping");
   modal.classList.add("show");
-  summary.innerHTML = '<span class="ps">检测中…（并发 10，单接口 8s 超时）</span>';
-  list.innerHTML = '<div class="ping-empty">正在检测全部接口延迟，请稍候…</div>';
+  document.getElementById("ping-summary").innerHTML = "";
+  document.getElementById("ping-list").innerHTML = '<div class="ping-empty">正在检测…</div>';
+  bar.style.width = "0%";
+  countEl.textContent = "准备中…";
+  document.getElementById("ping-disable").disabled = true;
+  document.getElementById("ping-foot-note").textContent = "";
   btn.disabled = true;
   btn.textContent = "检测中…";
+  livePingResults = [];
   try {
-    const res = await bridge.apiPost("config/ping", {});
-    summary.innerHTML =
-      '<span class="ps good"><b>' + res.success + '</b>可用</span>' +
-      '<span class="ps bad"><b>' + res.failed + '</b>失败</span>' +
-      '<span class="ps accent"><b>' + res.avg_ms + 'ms</b>平均延迟</span>' +
-      '<span class="ps"><b>' + (res.fastest ? res.fastest.elapsed_ms + "ms" : "-") + '</b>最快</span>' +
-      '<span class="ps"><b>' + (res.slowest ? res.slowest.elapsed_ms + "ms" : "-") + '</b>最慢</span>';
-    list.innerHTML = "";
-    (res.results || []).forEach(r => {
-      const cls = !r.ok ? "slow" : r.elapsed_ms < 500 ? "fast" : r.elapsed_ms < 1500 ? "mid" : "slow";
-      const el = document.createElement("div");
-      el.className = "ping-row";
-      el.innerHTML = '<span class="pn">' + r.name + '</span>' +
-        '<span class="pm ' + cls + '">' + (r.ok ? r.elapsed_ms + "ms" : "失败") + '</span>' +
-        '<span class="pt">' + (r.response_type || "-") + '</span>' +
-        '<span class="pu" title="' + r.url + '">' + r.url + '</span>';
-      list.appendChild(el);
-    });
-    if (!(res.results || []).length) list.innerHTML = '<div class="ping-empty">没有可检测的接口</div>';
-    // 同步更新管理表格每行状态列
-    (res.results || []).forEach(r => {
-      const idx = managed.findIndex(m => m.name === r.name);
-      const cell = document.querySelector('.tresult[data-idx="' + idx + '"]');
-      if (cell) {
-        cell.textContent = r.ok ? r.elapsed_ms + "ms" : "失败";
-        cell.style.color = r.ok ? "var(--green)" : "var(--red)";
+    if (pingSubId) { try { await bridge.unsubscribeSSE(pingSubId); } catch (e) {} pingSubId = null; }
+    pingSubId = await bridge.subscribeSSE("config/ping/stream", {
+      onMessage: function (ev) {
+        const d = ev.parsed;
+        if (!d) return;
+        if (d.type === "start") {
+          countEl.textContent = "0 / " + d.total;
+        } else if (d.type === "progress") {
+          livePingResults.push(d.result);
+          const pct = Math.round((d.done / d.total) * 100);
+          bar.style.width = pct + "%";
+          countEl.textContent = d.done + " / " + d.total;
+          appendPingRow(d.result);
+        } else if (d.type === "done") {
+          bar.style.width = "100%";
+          countEl.textContent = d.summary.total + " / " + d.summary.total;
+          renderPingSummary(d.summary);
+          renderPingList(d.results || livePingResults);
+          // 同步管理表格每行状态列
+          (d.results || []).forEach(function (r) {
+            const idx = managed.findIndex(function (m) { return m.name === r.name; });
+            const cell = document.querySelector('.tresult[data-idx="' + idx + '"]');
+            if (cell) {
+              cell.textContent = r.ok ? r.elapsed_ms + "ms" : "失败";
+              cell.style.color = r.ok ? "var(--green)" : "var(--red)";
+            }
+          });
+          // 失败名单 + 禁用按钮
+          const fails = (d.results || []).filter(function (r) { return !r.ok; }).map(function (r) { return r.name; });
+          const disBtn = document.getElementById("ping-disable");
+          const note = document.getElementById("ping-foot-note");
+          if (fails.length) {
+            disBtn.disabled = false;
+            note.textContent = "检测到 " + fails.length + " 个失效接口";
+          } else {
+            disBtn.disabled = true;
+            note.textContent = "全部接口正常";
+          }
+          disBtn.dataset.fails = JSON.stringify(fails);
+        }
+      },
+      onError: function (e) {
+        document.getElementById("ping-list").innerHTML =
+          '<div class="ping-empty">检测中断: ' + ((e && e.message) || "连接错误") + '</div>';
+        countEl.textContent = "已中断";
       }
-    });
-    // 记录失败名单，启用「禁用失效接口」按钮
-    const fails = (res.results || []).filter(r => !r.ok).map(r => r.name);
-    const disBtn = document.getElementById("ping-disable");
-    const note = document.getElementById("ping-foot-note");
-    if (fails.length) {
-      disBtn.disabled = false;
-      note.textContent = "检测到 " + fails.length + " 个失效接口";
-    } else {
-      disBtn.disabled = true;
-      note.textContent = "全部接口正常";
-    }
-    disBtn.dataset.fails = JSON.stringify(fails);
+    }, {});
   } catch (err) {
-    list.innerHTML = '<div class="ping-empty">测速失败: ' + (err.message || err) + '</div>';
+    document.getElementById("ping-list").innerHTML =
+      '<div class="ping-empty">检测失败: ' + (err.message || err) + '</div>';
   }
   btn.disabled = false;
   btn.textContent = "批量检测";
 }
+
 document.getElementById("m-ping").addEventListener("click", pingAll);
-document.getElementById("ping-close").addEventListener("click", () => document.getElementById("ping-modal").classList.remove("show"));
+document.getElementById("ping-close").addEventListener("click", async () => {
+  document.getElementById("ping-modal").classList.remove("show");
+  if (pingSubId) { try { await bridge.unsubscribeSSE(pingSubId); } catch (e) {} pingSubId = null; }
+});
 document.getElementById("ping-modal").addEventListener("click", (e) => { if (e.target.id === "ping-modal") e.target.classList.remove("show"); });
 async function saveAll(btn) {
   if (!bridge) { setManageStatus("未连接后端", true); return; }

@@ -6,6 +6,7 @@
 - 支持在配置中添加自定义指令（自动通过兜底分发器响应）
 """
 import asyncio
+import json
 import platform
 from datetime import datetime
 
@@ -131,6 +132,12 @@ class KekeApiCollectionPlugin(Star):
                     self.ping_all,
                     ["POST"],
                     "批量检测接口延迟",
+                )
+                context.register_web_api(
+                    f"{prefix}/config/ping/stream",
+                    self.ping_stream,
+                    ["GET"],
+                    "批量检测接口延迟（SSE 实时进度）",
                 )
         except Exception as e:
             logger.warning(f"注册插件页面 API 失败: {e}")
@@ -282,6 +289,137 @@ class KekeApiCollectionPlugin(Star):
             return json_response({"ok": False, "status": 0, "error": f"连接失败: {e.__class__.__name__}", "elapsed_ms": round((time.time() - start) * 1000)})
         except Exception as e:
             return json_response({"ok": False, "status": 0, "error": str(e)[:80], "elapsed_ms": round((time.time() - start) * 1000)})
+
+    async def _probe_one(self, name: str, url: str) -> dict:
+        """探测单个接口，返回完整信息。"""
+        import time
+        start = time.time()
+        try:
+            timeout = aiohttp.ClientTimeout(total=8)
+            async with self.session_lock:
+                if self.session is None or self.session.closed:
+                    self.session = aiohttp.ClientSession()
+            async with self.session.get(
+                url, headers={"User-Agent": self.user_agent}, timeout=timeout
+            ) as resp:
+                body = await resp.content.read(256)
+                ct = (resp.headers.get("Content-Type") or "").lower()
+                elapsed = round((time.time() - start) * 1000)
+                if ct.startswith("image/"):
+                    rtype = "图片"
+                elif ct.startswith("audio/"):
+                    rtype = "音频"
+                elif ct.startswith("video/"):
+                    rtype = "视频"
+                elif "json" in ct:
+                    rtype = "JSON"
+                else:
+                    rtype = "文本"
+                return {
+                    "name": name,
+                    "url": url,
+                    "ok": resp.status == 200,
+                    "status": resp.status,
+                    "elapsed_ms": elapsed,
+                    "content_type": ct or "未知",
+                    "response_type": rtype,
+                    "size": len(body),
+                }
+        except asyncio.TimeoutError:
+            return {"name": name, "url": url, "ok": False, "status": 0,
+                    "elapsed_ms": 8000, "error": "超时", "response_type": "-"}
+        except aiohttp.ClientError as e:
+            return {"name": name, "url": url, "ok": False, "status": 0,
+                    "elapsed_ms": round((time.time() - start) * 1000),
+                    "error": e.__class__.__name__, "response_type": "-"}
+        except Exception as e:
+            return {"name": name, "url": url, "ok": False, "status": 0,
+                    "elapsed_ms": round((time.time() - start) * 1000),
+                    "error": str(e)[:40], "response_type": "-"}
+
+    @staticmethod
+    def _summarize_ping(results: list) -> dict:
+        """汇总批量检测结果。"""
+        ok_list = sorted(
+            (r for r in results if r["ok"]), key=lambda r: r["elapsed_ms"]
+        )
+        fail_list = [r for r in results if not r["ok"]]
+        avg = (
+            round(sum(r["elapsed_ms"] for r in ok_list) / len(ok_list))
+            if ok_list
+            else 0
+        )
+        type_stats = {}
+        for r in ok_list:
+            t = r.get("response_type", "未知")
+            type_stats[t] = type_stats.get(t, 0) + 1
+        return {
+            "total": len(results),
+            "success": len(ok_list),
+            "failed": len(fail_list),
+            "avg_ms": avg,
+            "fastest": ok_list[0] if ok_list else None,
+            "slowest": ok_list[-1] if ok_list else None,
+            "type_stats": type_stats,
+        }
+
+    async def ping_stream(self):
+        """批量检测（SSE 流式）：每完成一个接口推送一条进度。"""
+        from astrbot.api.web import stream_response
+
+        targets = list(self.api_map.items())
+        total = len(targets)
+        sem = asyncio.Semaphore(10)
+
+        async def events():
+            if total == 0:
+                yield f"data: {json.dumps({'type': 'done', 'summary': {'total': 0, 'success': 0, 'failed': 0, 'avg_ms': 0, 'type_stats': {}}, 'results': []})}\n\n"
+                return
+            yield f"data: {json.dumps({'type': 'start', 'total': total})}\n\n"
+            queue = asyncio.Queue()
+
+            async def worker(name: str, url: str):
+                async with sem:
+                    result = await self._probe_one(name, url)
+                await queue.put(result)
+
+            for name, url in targets:
+                asyncio.create_task(worker(name, url))
+
+            collected = []
+            for _ in range(total):
+                result = await queue.get()
+                collected.append(result)
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {
+                            "type": "progress",
+                            "done": len(collected),
+                            "total": total,
+                            "result": result,
+                        }
+                    )
+                    + "\n\n"
+                )
+            summary = self._summarize_ping(collected)
+            ok_list = sorted(
+                (r for r in collected if r["ok"]), key=lambda r: r["elapsed_ms"]
+            )
+            fail_list = [r for r in collected if not r["ok"]]
+            yield (
+                "data: "
+                + json.dumps(
+                    {
+                        "type": "done",
+                        "summary": summary,
+                        "results": ok_list + fail_list,
+                    }
+                )
+                + "\n\n"
+            )
+
+        return stream_response(events())
 
     async def ping_all(self):
         """批量检测所有接口延迟，按延迟排序返回。"""
