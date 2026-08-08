@@ -11,7 +11,6 @@ import platform
 import aiohttp
 
 from astrbot.api import logger
-from astrbot.api.config import AstrBotConfig
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.api.web import json_response
@@ -81,7 +80,7 @@ BUILTIN_COMMANDS = set(DEFAULT_API_MAP.keys()) | set(ALIAS_MAP.keys())
 class KekeApiCollectionPlugin(Star):
     """【柯柯API集合】聚合图片、文案、音乐、视频等全年龄 API 接口。"""
 
-    def __init__(self, context: Context, config: AstrBotConfig = None):
+    def __init__(self, context: Context, config=None):
         super().__init__(context)
         self.config = config
         self.session = None
