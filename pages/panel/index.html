@@ -126,7 +126,9 @@
   .m-toolbar .m-status.error { color: var(--red); }
   .m-toolbar .m-status.ok { color: var(--green); }
   .m-table { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .m-row { display: grid; grid-template-columns: 190px 1fr 110px 150px; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--border); align-items: center; }
+  .m-row { display: grid; grid-template-columns: 190px 1fr 100px 70px 140px; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--border); align-items: center; }
+  .m-row.off { opacity: .55; }
+  .m-row.off .name-input { text-decoration: line-through; }
   .m-row:last-child { border-bottom: none; }
   .m-row.head { font-size: 11px; color: var(--fg-2); font-weight: 600; letter-spacing: 0.04em; background: var(--bg); }
   .m-row input[type="text"] { width: 100%; padding: 7px 10px; font-size: 12.5px; border-radius: 8px; }
@@ -135,7 +137,14 @@
   .m-row .op.test:hover { border-color: var(--accent); color: var(--accent); }
   .m-row .op.del:hover { border-color: var(--red); color: var(--red); }
   .m-row .op:disabled { opacity: .45; cursor: wait; }
-  .m-new { display: grid; grid-template-columns: 190px 1fr 110px 150px; gap: 10px; padding: 12px 14px; }
+  /* 开关 */
+  .switch { position: relative; display: inline-block; width: 38px; height: 22px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider { position: absolute; cursor: pointer; inset: 0; background: #aeaeb2; border-radius: 999px; transition: .2s; }
+  .switch .slider:before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + .slider { background: var(--green); }
+  .switch input:checked + .slider:before { transform: translateX(16px); }
+  .m-new { display: grid; grid-template-columns: 190px 1fr 100px 70px 140px; gap: 10px; padding: 12px 14px; }
   .m-new input[type="text"] { width: 100%; padding: 7px 10px; font-size: 12.5px; border-radius: 8px; }
   .m-new .url-input { font-family: var(--mono); font-size: 11.5px; }
   .m-scroll { max-height: 60vh; overflow-y: auto; }
@@ -207,7 +216,7 @@
     </div>
     <div class="m-table">
       <div class="m-row head">
-        <span>指令名</span><span>接口地址</span><span>状态</span><span>操作</span>
+        <span>指令名</span><span>接口地址</span><span>状态</span><span>开关</span><span>操作</span>
       </div>
       <div class="m-scroll" id="m-rows"></div>
       <div class="m-new">
@@ -218,7 +227,7 @@
       </div>
     </div>
     <div class="m-actions">
-      <span style="font-size:12px;color:var(--fg-2)">修改后点击「保存全部修改」立即生效（无需重载插件）；删除某行即禁用该指令。</span>
+      <span style="font-size:12px;color:var(--fg-2)">开关控制指令启用/关闭；「测试」检测接口连通性；保存后立即生效。每日凌晨 4:00 自动全量检测：失效接口自动关闭、恢复后自动开启。</span>
     </div>
   </div>
 
@@ -387,6 +396,7 @@ const statusEl = document.getElementById("live-status");
 const chipsEl = document.getElementById("chips");
 const cfgTextEl = document.getElementById("cfg-text");
 let liveApiMap = null;
+let liveDisabled = [];
 let bridge = null;
 
 function copyText(text, btn, doneLabel) {
@@ -408,6 +418,7 @@ async function loadLiveConfig() {
     }
     const data = await bridge.apiGet("config");
     liveApiMap = data.api_map || {};
+    liveDisabled = data.disabled_commands || [];
     const custom = data.custom_commands || [];
     const names = Object.keys(liveApiMap);
     chipsEl.innerHTML = "";
@@ -416,9 +427,10 @@ async function loadLiveConfig() {
       chip.className = "chip" + (custom.includes(name) ? " custom" : "");
       chip.textContent = name;
       chip.title = liveApiMap[name];
+      if (liveDisabled.includes(name)) chip.style.opacity = ".4";
       chipsEl.appendChild(chip);
     });
-    statusEl.textContent = "已连接 · " + names.length + " 个生效指令 · 自定义 " + custom.length;
+    statusEl.textContent = "已连接 · " + names.length + " 个指令 · 禁用 " + liveDisabled.length;
     statusEl.classList.remove("error");
     cfgTextEl.textContent = names.map(n => n + "|" + liveApiMap[n]).join("\n");
     loadManage();
@@ -456,17 +468,26 @@ function renderRows() {
   managed.forEach((row, idx) => {
     const el = document.createElement("div");
     el.className = "m-row";
-    el.innerHTML = `<input type="text" value="${escapeAttr(row.name)}" data-field="name">
+    el.innerHTML = `<input type="text" class="name-input" value="${escapeAttr(row.name)}" data-field="name">
       <input type="text" class="url-input" value="${escapeAttr(row.url)}" data-field="url">
       <span class="tresult" data-idx="${idx}" style="font-size:11px;color:var(--fg-2)">未测试</span>
+      <label class="switch" title="启用/关闭该指令">
+        <input type="checkbox" class="sw" data-idx="${idx}" ${row.disabled ? "" : "checked"}>
+        <span class="slider"></span>
+      </label>
       <span style="display:flex;gap:6px">
         <button class="op test" data-idx="${idx}">测试</button>
         <button class="op del" data-idx="${idx}">删除</button>
       </span>`;
+    if (row.disabled) el.classList.add("off");
     el.querySelector('input[data-field="name"]').addEventListener("input", e => { managed[idx].name = e.target.value; });
     el.querySelector('input[data-field="url"]').addEventListener("input", e => { managed[idx].url = e.target.value; });
     el.querySelector(".del").addEventListener("click", () => { managed.splice(idx, 1); renderRows(); });
     el.querySelector(".test").addEventListener("click", (e) => testRow(idx, e.target));
+    el.querySelector(".sw").addEventListener("change", (e) => {
+      managed[idx].disabled = !e.target.checked;
+      el.classList.toggle("off", managed[idx].disabled);
+    });
     rowsEl.appendChild(el);
   });
   setManageStatus("共 " + managed.length + " 条指令，修改后点击保存生效");
@@ -505,7 +526,11 @@ async function testRow(idx, btn) {
 
 function loadManage() {
   if (!liveApiMap) return;
-  managed = Object.keys(liveApiMap).map(k => ({ name: k, url: liveApiMap[k] }));
+  managed = Object.keys(liveApiMap).map(k => ({
+    name: k,
+    url: liveApiMap[k],
+    disabled: liveDisabled.includes(k),
+  }));
   renderRows();
 }
 
@@ -537,10 +562,12 @@ document.getElementById("m-save").addEventListener("click", async (e) => {
   btn.textContent = "保存中…";
   try {
     const api_map = clean.map(r => r.name + "|" + r.url);
-    const res = await bridge.apiPost("config/save", { api_map });
+    const disabled = clean.filter(r => r.disabled).map(r => r.name);
+    const res = await bridge.apiPost("config/save", { api_map, disabled });
     liveApiMap = {};
     clean.forEach(r => { liveApiMap[r.name] = r.url; });
-    setManageStatus("✅ 已保存 " + clean.length + " 条指令，立即生效");
+    liveDisabled = disabled;
+    setManageStatus("✅ 已保存 " + clean.length + " 条指令，立即生效（禁用 " + disabled.length + " 条）");
     await loadLiveConfig();
   } catch (err) {
     setManageStatus("保存失败: " + (err.message || err), true);

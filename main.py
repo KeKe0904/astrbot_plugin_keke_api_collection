@@ -7,6 +7,7 @@
 """
 import asyncio
 import platform
+from datetime import datetime
 
 import aiohttp
 
@@ -93,6 +94,8 @@ class KekeApiCollectionPlugin(Star):
         )
         self.api_map = {}
         self.custom_commands = {}
+        self.disabled_commands = set()  # 被禁用的指令（手动或自动检测）
+        self._health_task = None
         self._load_config()
         # 插件页面后端 API：供 WebUI 查询当前生效的接口配置。
         # bridge 转发路径为 /api/v1/plugins/extensions/{插件名}/config，
@@ -135,6 +138,7 @@ class KekeApiCollectionPlugin(Star):
                 "api_map": self.api_map,
                 "custom_commands": list(self.custom_commands.keys()),
                 "builtin_commands": sorted(BUILTIN_COMMANDS),
+                "disabled_commands": sorted(self.disabled_commands),
                 "timeout": self.timeout,
                 "max_retries": self.max_retries,
             }
@@ -173,8 +177,18 @@ class KekeApiCollectionPlugin(Star):
         self.custom_commands = {
             k: v for k, v in self.api_map.items() if k not in BUILTIN_COMMANDS
         }
+        # 读取被禁用的指令
+        disabled = None
+        if self.config:
+            disabled = self.config.get("disabled")
+        self.disabled_commands = (
+            set(str(x).strip() for x in disabled if str(x).strip())
+            if isinstance(disabled, list)
+            else set()
+        )
         logger.info(f"柯柯API集合已加载 {len(self.api_map)} 个接口, "
-                    f"其中自定义指令 {len(self.custom_commands)} 个")
+                    f"其中自定义指令 {len(self.custom_commands)} 个, "
+                    f"已禁用 {len(self.disabled_commands)} 个")
 
     def _get_url(self, name: str) -> str | None:
         """根据指令名（含别名）获取接口地址。"""
@@ -195,9 +209,16 @@ class KekeApiCollectionPlugin(Star):
             if not name or not url.startswith(("http://", "https://")):
                 return error_response(f"无效条目: {entry}", status_code=400)
             cleaned.append(f"{name}|{url}")
+        # 启用/禁用状态
+        disabled = payload.get("disabled")
+        if isinstance(disabled, list):
+            self.disabled_commands = set(
+                str(x).strip() for x in disabled if str(x).strip()
+            )
         # 持久化到 AstrBot 配置
         if self.config is not None:
             self.config["api_map"] = cleaned
+            self.config["disabled"] = sorted(self.disabled_commands)
             try:
                 await self.config.save_config_async()
             except Exception:
@@ -216,6 +237,7 @@ class KekeApiCollectionPlugin(Star):
                 "saved": True,
                 "count": len(self.api_map),
                 "custom_commands": list(self.custom_commands.keys()),
+                "disabled_commands": sorted(self.disabled_commands),
             }
         )
 
@@ -261,6 +283,12 @@ class KekeApiCollectionPlugin(Star):
         url = self._get_url(api_name)
         if not url:
             yield event.plain_result(f"未配置「{api_name}」接口，请在插件配置中添加")
+            return
+        target = ALIAS_MAP.get(api_name, api_name)
+        if api_name in self.disabled_commands or target in self.disabled_commands:
+            yield event.plain_result(
+                f"「{api_name}」当前已禁用（接口失效被自动关闭，"
+                f"可在插件 WebUI 指令管理中重新启用）")
             return
         result = await self.fetch_api(url)
         async for response in self.handle_api_response(event, api_name, result):
@@ -591,6 +619,12 @@ class KekeApiCollectionPlugin(Star):
                     break
         if not matched:
             return
+        if matched in self.disabled_commands:
+            event.stop_event()
+            yield event.plain_result(
+                f"「{matched}」当前已禁用（接口失效被自动关闭，"
+                f"可在插件 WebUI 指令管理中重新启用）")
+            return
         event.stop_event()
         async for r in self._run(matched, event):
             yield r
@@ -644,8 +678,96 @@ class KekeApiCollectionPlugin(Star):
     async def menu(self, event: AstrMessageEvent):
         yield event.plain_result(self._generate_help_text())
 
+    # ------------------------------------------------------ 自动健康检测
+    @filter.on_astrbot_loaded()
+    async def on_loaded(self):
+        """插件加载完成：启动后台自动检测任务。"""
+        if self.session is None or self.session.closed:
+            self.session = aiohttp.ClientSession()
+        logger.info("柯柯API集合插件初始化完成，自动检测任务已启动（每天凌晨4点）")
+        self._health_task = asyncio.create_task(self._health_check_loop())
+
+    async def _health_check_loop(self):
+        """后台循环：每天 04:00-04:10 执行一次全量接口检测。"""
+        last_run_date = None
+        while True:
+            try:
+                now = datetime.now()
+                if now.hour == 4 and now.minute < 10 and last_run_date != now.date():
+                    last_run_date = now.date()
+                    logger.info("开始每日自动检测全部接口...")
+                    await self._auto_check_apis()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"自动检测任务异常: {e}")
+            await asyncio.sleep(300)  # 每 5 分钟检查一次时间
+
+    async def _probe_url(self, url: str) -> bool:
+        """探测单个接口是否可用（只读 128 字节）。"""
+        try:
+            timeout = aiohttp.ClientTimeout(total=8)
+            async with self.session_lock:
+                if self.session is None or self.session.closed:
+                    self.session = aiohttp.ClientSession()
+            async with self.session.get(
+                url, headers={"User-Agent": self.user_agent}, timeout=timeout
+            ) as resp:
+                await resp.content.read(128)
+                return resp.status == 200
+        except Exception:
+            return False
+
+    async def _auto_check_apis(self):
+        """全量检测：失效接口自动禁用，恢复的接口自动启用。"""
+        urls = sorted(set(self.api_map.values()))
+        sem = asyncio.Semaphore(10)
+
+        async def probe(url: str):
+            async with sem:
+                return url, await self._probe_url(url)
+
+        results = await asyncio.gather(*(probe(u) for u in urls))
+        ok_map = dict(results)
+
+        changed = False
+        newly_disabled = []
+        newly_enabled = []
+        for name, url in self.api_map.items():
+            ok = ok_map.get(url, False)
+            if not ok and name not in self.disabled_commands:
+                self.disabled_commands.add(name)
+                newly_disabled.append(name)
+                changed = True
+            elif ok and name in self.disabled_commands:
+                self.disabled_commands.discard(name)
+                newly_enabled.append(name)
+                changed = True
+
+        if changed and self.config is not None:
+            self.config["disabled"] = sorted(self.disabled_commands)
+            try:
+                await self.config.save_config_async()
+            except Exception:
+                self.config.save_config()
+
+        if newly_disabled:
+            logger.warning(f"自动检测: {len(newly_disabled)} 个接口失效已自动禁用: "
+                           f"{', '.join(newly_disabled[:20])}")
+        if newly_enabled:
+            logger.info(f"自动检测: {len(newly_enabled)} 个接口恢复已自动启用: "
+                        f"{', '.join(newly_enabled[:20])}")
+        if not changed:
+            logger.info(f"自动检测完成: 全部 {len(urls)} 个接口状态无变化")
+
     # ------------------------------------------------------------- 生命周期
     async def terminate(self):
+        if self._health_task:
+            self._health_task.cancel()
+            try:
+                await self._health_task
+            except (asyncio.CancelledError, Exception):
+                pass
         if self.session and not self.session.closed:
             await self.session.close()
         logger.info("柯柯API集合插件已销毁")

@@ -552,5 +552,11 @@
     "description": "请求使用的 User-Agent",
     "type": "string",
     "default": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
+  },
+  "disabled": {
+    "description": "被禁用的指令",
+    "hint": "列出禁用的指令名（每行一个）。可通过 WebUI 指令管理的开关手动设置，或由每日自动检测自动维护",
+    "type": "list",
+    "default": []
   }
 }
