@@ -550,7 +550,7 @@
   },
   "user_agent": {
     "description": "请求使用的 User-Agent",
-    "type": "str",
+    "type": "string",
     "default": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
   }
 }
