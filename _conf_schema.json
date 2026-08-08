@@ -1,0 +1,57 @@
+{
+  "api_map": {
+    "description": "API 指令映射表",
+    "hint": "格式：指令名|接口地址，每行一条。内置指令可修改地址；新增指令名会自动注册为自定义指令（修改后请重载插件生效）",
+    "type": "list",
+    "default": [
+      "摸鱼日历|https://openapi.dwo.cc/api/moyuya",
+      "文案|https://openapi.dwo.cc/api/yi",
+      "舔狗日记|https://openapi.dwo.cc/api/tdog",
+      "美女|https://openapi.dwo.cc/api/pc_mn",
+      "图片|https://openapi.dwo.cc/api/yrcmcx",
+      "壁纸|https://t.mwm.moe/pc",
+      "风景|https://t.mwm.moe/fj",
+      "手机壁纸|https://t.mwm.moe/mp",
+      "原神壁纸|https://t.mwm.moe/ys",
+      "高清壁纸|https://t.mwm.moe/hd",
+      "4K壁纸|https://t.mwm.moe/4k",
+      "二次元|https://www.dmoe.cc/random.php",
+      "东方|https://img.paulzzh.com/touhou/random",
+      "ACG壁纸|https://www.loliapi.com/acg/",
+      "动漫壁纸|https://api.btstu.cn/sjbz/api.php?lx=dongman",
+      "必应壁纸|https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1",
+      "少女图|https://api.anosu.top/img?type=girl",
+      "白色系|https://api.anosu.top/img?type=white",
+      "黑色系|https://api.anosu.top/img?type=black",
+      "萌系|https://api.anosu.top/img?type=moe",
+      "COS图|https://api.anosu.top/img?type=cos",
+      "一言|https://v1.hitokoto.cn/?encode=text",
+      "今日诗词|https://v1.jinrishici.com/",
+      "每日一句|https://api.xygeng.cn/one",
+      "笑话|https://v2.jokeapi.dev/joke/Any?type=single",
+      "猫图|https://cataas.com/cat",
+      "狗狗|https://dog.ceo/api/breeds/image/random",
+      "柴犬|https://shibe.online/api/shibes?count=1&urls=true",
+      "狐狸|https://randomfox.ca/floof/",
+      "网易云歌单|https://api.i-meto.com/meting/api?server=netease&type=playlist&id=3778678",
+      "音乐直链|https://api.injahow.cn/meting/?type=url&id=347230",
+      "B站热门|https://api.bilibili.com/x/web-interface/popular?ps=1",
+      "头像|https://api.dicebear.com/9.x/bottts/svg?seed=keke"
+    ]
+  },
+  "timeout": {
+    "description": "请求超时时间（秒）",
+    "type": "int",
+    "default": 10
+  },
+  "max_retries": {
+    "description": "失败最大重试次数",
+    "type": "int",
+    "default": 3
+  },
+  "user_agent": {
+    "description": "请求使用的 User-Agent",
+    "type": "str",
+    "default": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
+  }
+}

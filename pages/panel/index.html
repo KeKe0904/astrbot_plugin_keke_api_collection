@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>柯柯API集合 · 接口管理</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --bg-card: #ffffff;
+    --fg: #1d1d1f;
+    --fg-2: #86868b;
+    --border: rgba(0,0,0,0.08);
+    --accent: #0071e3;
+    --accent-bg: rgba(0,113,227,0.08);
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #101012;
+    --bg-card: #1c1c1f;
+    --fg: #f5f5f7;
+    --fg-2: #98989d;
+    --border: rgba(255,255,255,0.1);
+    --accent: #409cff;
+    --accent-bg: rgba(64,156,255,0.14);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro SC", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 80px; }
+
+  header { margin-bottom: 28px; }
+  .kicker { font-size: 12px; letter-spacing: 0.12em; color: var(--fg-2); text-transform: uppercase; margin-bottom: 8px; }
+  h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+  .sub { color: var(--fg-2); font-size: 14px; margin-top: 6px; }
+  .stats { display: flex; gap: 28px; margin-top: 20px; flex-wrap: wrap; }
+  .stat b { font-size: 22px; font-weight: 650; display: block; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--fg-2); }
+
+  /* 生效配置 */
+  .live {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;
+  }
+  .live h2 { font-size: 15px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+  .live .hint { font-size: 12px; color: var(--fg-2); margin-top: 4px; }
+  .live .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chip {
+    font-size: 12px; padding: 4px 10px; border-radius: 999px;
+    background: var(--accent-bg); color: var(--accent); font-weight: 500;
+  }
+  .chip.custom { background: rgba(255,149,0,0.14); color: #c77d00; }
+  [data-theme="dark"] .chip.custom { color: #ffb340; }
+  .live .tools { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .btn {
+    border: 1px solid var(--border); background: transparent; color: var(--fg);
+    border-radius: 8px; font-size: 12px; padding: 7px 14px; cursor: pointer;
+    font-family: inherit; transition: all .15s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.done { border-color: #34c759; color: #34c759; }
+  .live .status-line { font-size: 12px; color: var(--fg-2); margin-top: 10px; }
+  .live .status-line.error { color: #ff3b30; }
+  .cfg-text {
+    display: none; margin-top: 12px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 10px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--fg-2);
+    padding: 12px 14px; max-height: 200px; overflow: auto; white-space: pre;
+  }
+  .cfg-text.show { display: block; }
+
+  .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  input[type="search"] {
+    flex: 1; min-width: 220px; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--fg); padding: 10px 14px; font-size: 14px;
+    outline: none; transition: border-color .15s;
+  }
+  input[type="search"]:focus { border-color: var(--accent); }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tab {
+    border: 1px solid var(--border); background: transparent; color: var(--fg-2);
+    border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer;
+    transition: all .15s; font-family: inherit;
+  }
+  .tab:hover { color: var(--fg); }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .count { font-size: 12px; color: var(--fg-2); margin-left: auto; font-variant-numeric: tabular-nums; }
+
+  .list { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .item { display: flex; align-items: center; gap: 14px; padding: 13px 18px; border-bottom: 1px solid var(--border); transition: background .12s; }
+  .item:last-child { border-bottom: none; }
+  .item:hover { background: var(--accent-bg); }
+  .item.hidden { display: none; }
+  .badge { flex: none; font-size: 11px; padding: 3px 9px; border-radius: 6px; font-weight: 600; letter-spacing: 0.02em; }
+  .badge-img   { background: rgba(255,149,0,0.14);  color: #c77d00; }
+  .badge-wall  { background: rgba(0,122,255,0.13);   color: #0066cc; }
+  .badge-text  { background: rgba(52,199,89,0.13);   color: #248a3d; }
+  .badge-animal{ background: rgba(255,45,85,0.12);   color: #d61f4a; }
+  .badge-music { background: rgba(175,82,222,0.13);  color: #9337c0; }
+  .badge-video { background: rgba(255,59,48,0.12);   color: #c9302a; }
+  .badge-tool  { background: rgba(142,142,147,0.16); color: #6d6d73; }
+  [data-theme="dark"] .badge-img   { color: #ffb340; }
+  [data-theme="dark"] .badge-wall  { color: #6db9ff; }
+  [data-theme="dark"] .badge-text  { color: #6fdc8c; }
+  [data-theme="dark"] .badge-animal{ color: #ff6b84; }
+  [data-theme="dark"] .badge-music { color: #cd8cff; }
+  [data-theme="dark"] .badge-video { color: #ff7a72; }
+  [data-theme="dark"] .badge-tool  { color: #b0b0b6; }
+  .info { flex: 1; min-width: 0; }
+  .name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot.ok { background: #34c759; }
+  .dot.cand { background: #aeaeb2; }
+  .note { font-size: 12px; color: var(--fg-2); margin-top: 2px; }
+  .url {
+    font-family: var(--mono); font-size: 11.5px; color: var(--fg-2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 340px; display: block; margin-top: 3px;
+  }
+  .copy {
+    flex: none; border: 1px solid var(--border); background: transparent; color: var(--fg);
+    border-radius: 8px; font-size: 12px; padding: 7px 12px; cursor: pointer;
+    font-family: inherit; transition: all .15s;
+  }
+  .copy:hover { border-color: var(--accent); color: var(--accent); }
+  .copy.done { border-color: #34c759; color: #34c759; }
+  .empty { padding: 48px 20px; text-align: center; color: var(--fg-2); font-size: 14px; }
+
+  footer { margin-top: 28px; font-size: 12px; color: var(--fg-2); text-align: center; }
+  footer code { font-family: var(--mono); font-size: 11px; background: var(--bg-card); border: 1px solid var(--border); padding: 2px 7px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Keke API Collection · v2.0.0</div>
+    <h1>柯柯API集合</h1>
+    <div class="sub">全年龄图片 / 壁纸 / 文案 / 动物 / 音乐 / 视频接口清单，全部经过 HTTP 200 实测验证</div>
+    <div class="stats">
+      <div class="stat"><b id="st-total">0</b><span>接口总数</span></div>
+      <div class="stat"><b id="st-img">0</b><span>图片</span></div>
+      <div class="stat"><b id="st-text">0</b><span>文案</span></div>
+      <div class="stat"><b id="st-music">0</b><span>音乐</span></div>
+      <div class="stat"><b id="st-video">0</b><span>视频</span></div>
+    </div>
+  </header>
+
+  <section class="live">
+    <h2>当前生效指令
+      <span class="hint" id="live-hint">（从插件后端实时读取）</span>
+    </h2>
+    <div class="chips" id="chips"><span class="chip">连接中…</span></div>
+    <div class="tools">
+      <button class="btn" id="copy-cfg">复制 api_map 配置</button>
+      <button class="btn" id="toggle-cfg">查看配置文本</button>
+    </div>
+    <div class="cfg-text" id="cfg-text"></div>
+    <div class="status-line" id="live-status"></div>
+  </section>
+
+  <div class="controls">
+    <input type="search" id="search" placeholder="搜索接口名称或地址…">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-cat="全部">全部</button>
+      <button class="tab" data-cat="图片">图片</button>
+      <button class="tab" data-cat="壁纸">壁纸</button>
+      <button class="tab" data-cat="文案">文案</button>
+      <button class="tab" data-cat="动物">动物</button>
+      <button class="tab" data-cat="音乐">音乐</button>
+      <button class="tab" data-cat="视频">视频</button>
+      <button class="tab" data-cat="工具">工具</button>
+    </div>
+    <div class="count" id="count"></div>
+  </div>
+
+  <div class="list" id="list"></div>
+  <footer>在管理面板的插件配置中修改 <code>api_map</code> 可增删接口（格式：指令名|接口地址）</footer>
+</div>
+
+<script src="/api/plugin/page/bridge-sdk.js"></script>
+<script>
+const CATS = {"图片":"badge-img","壁纸":"badge-wall","文案":"badge-text","动物":"badge-animal","音乐":"badge-music","视频":"badge-video","工具":"badge-tool"};
+const DATA = [
+["摸鱼日历","图片","https://openapi.dwo.cc/api/moyuya","每日摸鱼日历 PNG 图片",1],
+["美女","图片","https://openapi.dwo.cc/api/pc_mn","随机美女图片",1],
+["图片","图片","https://openapi.dwo.cc/api/yrcmcx","随机图片",1],
+["少女图","图片","https://api.anosu.top/img?type=girl","二次元少女图",1],
+["白色系","图片","https://api.anosu.top/img?type=white","白色系二次元图",1],
+["黑色系","图片","https://api.anosu.top/img?type=black","黑色系二次元图",1],
+["萌系","图片","https://api.anosu.top/img?type=moe","萌系动漫图",1],
+["COS图","图片","https://api.anosu.top/img?type=cos","COS 图片",1],
+["摄影图","图片","https://api.anosu.top/img?type=photo","摄影图",1],
+["美图","图片","https://api.anosu.top/img?type=beauty","美图",1],
+["漫画图","图片","https://api.anosu.top/img?type=manhua","漫画图",1],
+["Danbooru","图片","https://api.anosu.top/img?type=danbooru","Danbooru 图源",1],
+["DMoe","图片","https://www.dmoe.cc/random.php","二次元随机图",1],
+["DMoe-JSON","图片","https://www.dmoe.cc/random.php?return=json","返回图片链接 JSON",1],
+["Picsum","图片","https://picsum.photos/800/600","Unsplash 随机照片",1],
+["LoremFlickr","图片","https://loremflickr.com/800/600","按标签随机图",1],
+["AI人脸","图片","https://thispersondoesnotexist.com","AI 生成人脸",1],
+["HTTP-Cat","图片","https://http.cat/200","状态码猫咪图",1],
+["HTTP-Dog","图片","https://http.dog/200.jpg","状态码狗狗图",1],
+["壁纸","壁纸","https://t.mwm.moe/pc","PC 壁纸",1],
+["风景","壁纸","https://t.mwm.moe/fj","风景壁纸",1],
+["手机壁纸","壁纸","https://t.mwm.moe/mp","手机壁纸",1],
+["原神壁纸","壁纸","https://t.mwm.moe/ys","原神主题壁纸",1],
+["高清壁纸","壁纸","https://t.mwm.moe/hd","高清壁纸",1],
+["4K壁纸","壁纸","https://t.mwm.moe/4k","4K 壁纸",1],
+["东方壁纸","壁纸","https://img.paulzzh.com/touhou/random","东方Project 图",1],
+["ACG壁纸","壁纸","https://www.loliapi.com/acg/","ACG 随机图",1],
+["ACG-手机","壁纸","https://www.loliapi.com/acg/pe/","手机 ACG 图",1],
+["ACG-电脑","壁纸","https://www.loliapi.com/acg/pc/","电脑 ACG 图",1],
+["动漫壁纸","壁纸","https://api.btstu.cn/sjbz/api.php?lx=dongman","动漫壁纸",1],
+["风景壁纸2","壁纸","https://api.btstu.cn/sjbz/api.php?lx=fengjing","风景壁纸",1],
+["妹子壁纸","壁纸","https://api.btstu.cn/sjbz/api.php?lx=meizi","妹子壁纸",1],
+["随机壁纸","壁纸","https://api.btstu.cn/sjbz/api.php?lx=suiji","随机壁纸",1],
+["萌系壁纸","壁纸","https://api.btstu.cn/sjbz/api.php?lx=moe","萌系壁纸",1],
+["高清壁纸2","壁纸","https://api.btstu.cn/sjbz/api.php?lx=hd","高清壁纸",1],
+["必应壁纸","壁纸","https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1","Bing 每日壁纸",1],
+["Mir6壁纸","壁纸","https://api.mir6.com/api/sjbz?type=json","手机壁纸 JSON",1],
+["Mir6动漫","壁纸","https://api.mir6.com/api/dmimg?type=json","动漫图 JSON",1],
+["Mir6必应","壁纸","https://api.mir6.com/api/bing?type=json","必应图 JSON",1],
+["语剑壁纸","壁纸","https://api.yujn.cn/api/bing.php","必应壁纸",1],
+["PlaceDog","壁纸","https://place.dog/800/600","占位狗狗图",1],
+["PlaceBear","壁纸","https://placebear.com/800/600","占位熊图",1],
+["PlaceHold","壁纸","https://placehold.co/800x600","占位图",1],
+["DummyImage","壁纸","https://dummyimage.com/800x600","自定义占位图",1],
+["文案","文案","https://openapi.dwo.cc/api/yi","随机文案",1],
+["舔狗日记","文案","https://openapi.dwo.cc/api/tdog","舔狗日记",1],
+["一言","文案","https://v1.hitokoto.cn/?encode=text","一言",1],
+["今日诗词","文案","https://v1.jinrishici.com/","今日诗词",1],
+["每日一句","文案","https://api.xygeng.cn/one","每日一句",1],
+["小易语录","文案","https://api.xygeng.cn/sentences","语录",1],
+["小易诗词","文案","https://api.xygeng.cn/poetry","诗词",1],
+["小易笑话","文案","https://api.xygeng.cn/joke","笑话",1],
+["小易热搜","文案","https://api.xygeng.cn/hot","全网热搜",1],
+["小易B站","文案","https://api.xygeng.cn/bilibili","B站热搜",1],
+["小易知乎","文案","https://api.xygeng.cn/zhihu","知乎热搜",1],
+["小易翻译","文案","https://api.xygeng.cn/translate","翻译",1],
+["小易天气","文案","https://api.xygeng.cn/weather","天气",1],
+["小易歌词","文案","https://api.xygeng.cn/lyric","歌词",1],
+["笑话","文案","https://v2.jokeapi.dev/joke/Any?type=single","多语言笑话",1],
+["冷知识","文案","https://uselessfacts.jsph.pl/random.json?language=en","无用冷知识",1],
+["建议","文案","https://api.adviceslip.com/advice","人生建议",1],
+["Kanye语录","文案","https://api.kanye.rest/","Kanye 语录",1],
+["猫冷知识","文案","https://catfact.ninja/fact","猫咪冷知识",1],
+["语剑段子","文案","https://api.yujn.cn/api/duanzi.php","段子",1],
+["颜文字","文案","https://api.btstu.cn/yan/api.php","颜文字",1],
+["词典","文案","https://api.dictionaryapi.dev/api/v2/entries/en/hello","英文词典",1],
+["猫图","动物","https://cataas.com/cat","随机猫图",1],
+["狗狗","动物","https://dog.ceo/api/breeds/image/random","随机狗图",1],
+["随机狗","动物","https://random.dog/woof.json","随机狗图 JSON",1],
+["随机猫","动物","https://aws.random.cat/meow","随机猫图 JSON",1],
+["柴犬","动物","https://shibe.online/api/shibes?count=1&urls=true","柴犬图",1],
+["狐狸","动物","https://randomfox.ca/floof/","狐狸图",1],
+["Shibe猫","动物","https://shibe.online/api/cats?count=1&urls=true","猫图",1],
+["Shibe鸟","动物","https://shibe.online/api/birds?count=1&urls=true","鸟图",1],
+["蝾螈","动物","https://theaxolotlapi.netlify.app/api/axolotls/random","蝾螈图",1],
+["网易云歌单","音乐","https://api.i-meto.com/meting/api?server=netease&type=playlist&id=3778678","网易云热门歌单",1],
+["音乐直链","音乐","https://api.injahow.cn/meting/?type=url&id=347230","MP3 直链",1],
+["iTunes搜索","音乐","https://itunes.apple.com/search?term=love&media=music&limit=1","iTunes 音乐搜索",1],
+["Deezer榜单","音乐","https://api.deezer.com/chart/0/tracks","Deezer 热门榜单",1],
+["Deezer搜索","音乐","https://api.deezer.com/search?q=love&limit=1","Deezer 搜索",1],
+["B站热门","视频","https://api.bilibili.com/x/web-interface/popular?ps=1","B站热门视频(需UA)",1],
+["B站排行榜","视频","https://api.bilibili.com/x/web-interface/ranking?rid=0&type=all","B站全站排行",1],
+["B站分区","视频","https://api.bilibili.com/x/web-interface/region?rid=1&pn=1","B站分区视频",0],
+["小易视频","视频","https://api.xygeng.cn/video","随机视频",1],
+["小易抖音","视频","https://api.xygeng.cn/douyin","抖音视频",1],
+["小易快手","视频","https://api.xygeng.cn/kuaishou","快手视频",1],
+["小易MV","视频","https://api.xygeng.cn/mv","MV",1],
+["Dailymotion","视频","https://api.dailymotion.com/videos?fields=id,title","Dailymotion 视频搜索",0],
+["头像","工具","https://api.dicebear.com/9.x/bottts/svg?seed=keke","机器人头像",1],
+["Dicebear-像素","工具","https://api.dicebear.com/9.x/pixel-art/svg?seed=keke","像素头像",1],
+["Dicebear-冒险","工具","https://api.dicebear.com/9.x/adventurer/svg?seed=keke","冒险家头像",1],
+["Dicebear-几何","工具","https://api.dicebear.com/9.x/shapes/svg?seed=keke","几何头像",1],
+["Dicebear-字母","工具","https://api.dicebear.com/9.x/initials/svg?seed=keke","字母头像",1],
+["Dicebear-表情","工具","https://api.dicebear.com/9.x/fun-emoji/svg?seed=keke","表情头像",1],
+["Dicebear-3D","工具","https://api.dicebear.com/9.x/avataaars/svg?seed=keke","3D 头像",1],
+["UI-Avatars","工具","https://ui-avatars.com/api/?name=Keke&size=256","文字头像",1],
+["Pravatar","工具","https://i.pravatar.cc/300","真人头像",1],
+["Robohash","工具","https://robohash.org/keke.png","机器人头像",1],
+["二维码","工具","https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=keke","生成二维码",1],
+["GitHub表情","工具","https://api.github.com/emojis","GitHub 表情包",1],
+["IP信息","工具","https://ipinfo.io/json","IP 信息",1],
+["汇率","工具","https://open.er-api.com/v6/latest/USD","实时汇率",1],
+["币价","工具","https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd","加密货币价格",1],
+["天气","工具","https://wttr.in/Beijing?format=j1","天气 JSON",1],
+["知乎日报","工具","https://news-at.zhihu.com/api/4/news/latest","知乎日报",0],
+["随机用户","工具","https://randomuser.me/api/","随机用户资料",0],
+["RestCountries","工具","https://restcountries.com/v3.1/all","国家数据",0],
+];
+
+const listEl = document.getElementById("list");
+const countEl = document.getElementById("count");
+const searchEl = document.getElementById("search");
+let curCat = "全部";
+
+function render() {
+  const q = searchEl.value.trim().toLowerCase();
+  let visible = 0;
+  listEl.innerHTML = "";
+  DATA.forEach((d) => {
+    const [name, cat, url, note, ok] = d;
+    const showCat = curCat === "全部" || cat === curCat;
+    const showQ = !q || name.toLowerCase().includes(q) || url.toLowerCase().includes(q) || note.toLowerCase().includes(q);
+    if (!(showCat && showQ)) return;
+    visible++;
+    const el = document.createElement("div");
+    el.className = "item";
+    el.innerHTML = `
+      <span class="dot ${ok ? "ok" : "cand"}"></span>
+      <span class="badge ${CATS[cat]}">${cat}</span>
+      <div class="info">
+        <div class="name">${name}</div>
+        <div class="url" title="${url}">${url}</div>
+        <div class="note">${note}${ok ? "" : " · 候选(未实测)"}</div>
+      </div>
+      <button class="copy" data-url="${url}">复制</button>`;
+    el.querySelector(".copy").addEventListener("click", (e) => {
+      const btn = e.target;
+      navigator.clipboard.writeText(url).then(() => {
+        btn.textContent = "已复制"; btn.classList.add("done");
+        setTimeout(() => { btn.textContent = "复制"; btn.classList.remove("done"); }, 1500);
+      });
+    });
+    listEl.appendChild(el);
+  });
+  countEl.textContent = "显示 " + visible + " / " + DATA.length;
+  if (!visible) listEl.innerHTML = '<div class="empty">没有匹配的接口</div>';
+}
+
+function calcStats() {
+  const c = { "图片": 0, "壁纸": 0, "文案": 0, "音乐": 0, "视频": 0, "工具": 0 };
+  DATA.forEach(d => { if (c[d[1]] !== undefined) c[d[1]]++; });
+  document.getElementById("st-total").textContent = DATA.length;
+  document.getElementById("st-img").textContent = c["图片"] + c["壁纸"];
+  document.getElementById("st-text").textContent = c["文案"];
+  document.getElementById("st-music").textContent = c["音乐"];
+  document.getElementById("st-video").textContent = c["视频"];
+}
+
+/* ---------- bridge: 读取插件后端配置 ---------- */
+const statusEl = document.getElementById("live-status");
+const chipsEl = document.getElementById("chips");
+const cfgTextEl = document.getElementById("cfg-text");
+let liveApiMap = null;
+
+function copyText(text, btn, doneLabel) {
+  navigator.clipboard.writeText(text).then(() => {
+    const old = btn.textContent;
+    btn.textContent = doneLabel || "已复制";
+    btn.classList.add("done");
+    setTimeout(() => { btn.textContent = old; btn.classList.remove("done"); }, 1500);
+  });
+}
+
+async function loadLiveConfig() {
+  try {
+    const bridge = window.AstrBotPluginPage;
+    if (!bridge) throw new Error("bridge 不可用");
+    const ctx = await bridge.ready();
+    if (ctx && document.documentElement.getAttribute("data-theme") === null && ctx.isDark !== undefined) {
+      document.documentElement.setAttribute("data-theme", ctx.isDark ? "dark" : "light");
+    }
+    const data = await bridge.apiGet("config");
+    liveApiMap = data.api_map || {};
+    const custom = data.custom_commands || [];
+    const names = Object.keys(liveApiMap);
+    chipsEl.innerHTML = "";
+    names.forEach(name => {
+      const chip = document.createElement("span");
+      chip.className = "chip" + (custom.includes(name) ? " custom" : "");
+      chip.textContent = name;
+      chip.title = liveApiMap[name];
+      chipsEl.appendChild(chip);
+    });
+    statusEl.textContent = "已连接后端 · 共 " + names.length + " 个生效指令 · 自定义 " + custom.length + " 个";
+    statusEl.classList.remove("error");
+    cfgTextEl.textContent = names.map(n => n + "|" + liveApiMap[n]).join("\n");
+  } catch (e) {
+    chipsEl.innerHTML = '<span class="chip">后端连接失败（独立预览模式）</span>';
+    statusEl.textContent = "未连接到插件后端，显示内置示例数据。安装插件后此处会实时显示配置。";
+    statusEl.classList.add("error");
+  }
+}
+
+document.getElementById("copy-cfg").addEventListener("click", (e) => {
+  if (!liveApiMap) return loadLiveConfig().then(() => {
+    copyText(cfgTextEl.textContent, e.target, "已复制配置");
+  });
+  copyText(cfgTextEl.textContent, e.target, "已复制配置");
+});
+document.getElementById("toggle-cfg").addEventListener("click", (e) => {
+  cfgTextEl.classList.toggle("show");
+  e.target.textContent = cfgTextEl.classList.contains("show") ? "收起配置文本" : "查看配置文本";
+});
+
+document.getElementById("tabs").addEventListener("click", (e) => {
+  if (!e.target.classList.contains("tab")) return;
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  e.target.classList.add("active");
+  curCat = e.target.dataset.cat;
+  render();
+});
+searchEl.addEventListener("input", render);
+calcStats();
+render();
+loadLiveConfig();
+</script>
+</body>
+</html>

@@ -1,120 +1,231 @@
-# astrbot_plugin_keke_api_collection
+<div align="center">
 
-柯柯API集合插件 / Keke API Collection Plugin for AstrBot
+# 柯柯API集合 · Keke API Collection
 
-## 插件介绍
+**AstrBot 多功能 API 聚合插件 —— 图片 · 壁纸 · 文案 · 动物 · 音乐 · 视频，一个插件全部搞定**
 
-这是一个为AstrBot开发的API调用插件，支持多个有趣的API接口，包括摸鱼日历、文案生成、舔狗日记、美女图片等多种内容。
+[![Version](https://img.shields.io/badge/version-v2.0.0-0071e3.svg)](https://github.com/KeKe0904/astrbot_plugin_keke_api_collection)
+[![AstrBot](https://img.shields.io/badge/AstrBot-%3E%3D3.5.19-409cff.svg)](https://github.com/AstrBotDevs/AstrBot)
+[![APIs](https://img.shields.io/badge/API-513%2B-34c759.svg)](500源总清单.md)
+[![License](https://img.shields.io/badge/License-MIT-gray.svg)](LICENSE)
 
-### 支持平台
-- QQ个人号(aiocqhttp)
-- webchat
-- QQ官方接口
+</div>
 
-## 支持的指令
+---
 
-| 指令 | API地址 | 功能描述 |
-|------|---------|----------|
-| 摸鱼日历 | https://openapi.dwo.cc/api/moyuya | 获取每日摸鱼日历 |
-| 文案 | https://openapi.dwo.cc/api/yi | 生成随机文案 |
-| 舔狗日记 | https://openapi.dwo.cc/api/tdog | 获取舔狗日记 |
-| 美女 | https://openapi.dwo.cc/api/pc_mn | 获取美女图片 |
-| 图片 | https://openapi.dwo.cc/api/yrcmcx | 获取随机图片 |
-| 白丝 | https://api.pldduck.com/api/baisi | 获取白丝图片 |
-| 黑丝 | https://api.pldduck.com/api/heisi | 获取黑丝图片 |
+## 📖 简介
 
-## 使用方法
+柯柯API集合是一个为 [AstrBot](https://github.com/AstrBotDevs/AstrBot) 开发的 API 聚合插件。它将分散在互联网各处的**免费公开接口**（图片、壁纸、文案、语录、动物、音乐、视频等全年龄内容）统一封装为聊天指令，并支持：
 
-1. 将插件放入ASTRBOT的插件目录
-2. 重启ASTRBOT或加载插件
-3. 在聊天中直接输入指令，例如：`摸鱼日历`，插件会自动调用对应API并返回结果
+- 🎛️ **管理面板自由配置** —— 接口挂了？改配置就行，不用碰代码
+- 🧩 **自定义指令** —— 面板里加一行 `指令名|接口地址`，新指令即刻生效
+- 🖥️ **插件 WebUI 页面** —— 内置管理面板，实时查看生效配置、浏览全部接口
+- 📦 **500+ 接口清单** —— 附赠 513 条实测/候选接口文档
 
-## 注意事项
+## ✨ 功能特性
 
-- 部分API可能存在访问限制或不稳定情况
-- 插件使用了第三方API，请注意遵守相关服务的使用条款
+| 特性 | 说明 |
+|------|------|
+| ✅ 新版 AstrBot 适配 | 移除废弃 `@register`，支持 AstrBot 4.x（>= 3.5.19 自动识别 Star 类） |
+| ✅ 33 个内置指令 | 图片 / 壁纸 / 文案 / 动物 / 音乐 / 视频 六大类开箱即用 |
+| ✅ 面板配置化 | `_conf_schema.json` 声明，WebUI 可视化编辑 `api_map` |
+| ✅ 自定义指令 | 配置新增的指令名自动注册，无需写代码 |
+| ✅ WebUI 插件页面 | AstrBot 插件详情页内嵌「接口管理」面板 |
+| ✅ 请求增强 | UA 伪装、指数退避重试、429/5xx 处理、Retry-After 尊重 |
+| ✅ 响应智能识别 | 图片 / 音频 / 视频 / JSON / 文本自动解析 |
+| ✅ 接口大换血 | 全部接口 2026-08-08 实测，替换全部失效源 |
 
-## 技术实现
+## 🖥️ 插件页面预览
 
-- 基于Python异步编程，使用`aiohttp`库实现异步API调用
-- 自动识别JSON、文本和图片响应
-- 完善的错误处理和用户提示
-- 多平台适配，使用ASTRBOT的统一接口
+> 在 AstrBot WebUI → 插件 → 柯柯API集合 → 「接口管理」即可打开
 
-## 版本信息
+![WebUI 管理面板](docs/webui.png)
 
-- 版本：1.6.1
-- 作者：落梦陳
-- 仓库地址：https://github.com/KeKe0904/astrbot_plugin_keke_api_collection
+## 🚀 快速开始
 
-## 更新日志
+### 安装
 
-### v1.6.1
-- 代码优化：将动态注册改回明确的指令注册方式，确保AstrBot能够正确识别和触发指令
+1. 将插件放入 AstrBot 插件目录（目录名必须为 `astrbot_plugin_keke_api_collection`）：
 
-### v1.6.0
-- 安全优化：修复ClientSession并发初始化竞态问题，使用asyncio.Lock保护
-- 安全优化：处理ClientSession已关闭状态，避免运行时错误
-- 安全优化：对日志进行脱敏处理，避免泄露外部响应内容
-- 安全优化：简化设备信息显示，减少敏感信息暴露
-- 代码优化：抽象统一命令处理函数，减少重复代码
-- 功能优化：增强HTTP状态码处理，支持429限流错误重试
-- 功能优化：改进API响应处理，提供统一的解析失败提示
+```bash
+git clone https://github.com/KeKe0904/astrbot_plugin_keke_api_collection
+# 或手动将解压后的文件夹放入插件目录
+```
 
-### v1.5.0
-- 代码优化：移除无用导入（base64）
-- 代码优化：移除重复导入（os）
-- 功能优化：增强content_type判断，使用lower()进行更严谨的匹配
-- 安全优化：修复ClientSession懒加载的竞态条件风险
-- 性能优化：修复device_info方法中的事件循环阻塞问题，使用run_in_executor
+2. 在 AstrBot WebUI 或命令行重载插件。
 
-### v1.4.2
-- 移除美腿指令和API：由于API不稳定且存在反爬虫机制，移除该指令
+### 使用
 
-### v1.4.1
-- 修复美腿指令：添加对HTML响应的检测和处理，解决返回`<script src="/_guard/html.js?js=slider_html"></script>`错误的问题
-- 增强美腿API错误处理：当API返回反爬虫页面时，提供友好的错误提示
+在聊天中直接发送指令即可，例如：
 
-### v1.4.0
-- 重构指令注册方式：使用动态注册，减少重复代码，使代码更加优雅
-- 移除无意义的Base64编码：直接使用明文API地址，提高代码可读性
-- 修复跨平台兼容性问题：使用os.path.abspath(os.sep)获取根目录，解决Windows平台上的路径问题
-- 优化插件初始化：使用@filter.on_astrbot_loaded()钩子，确保ClientSession在插件加载时正确创建
-- 解决并发状态竞争问题：通过插件加载时初始化ClientSession，避免多个并发请求创建多个Session
-- 简化代码结构：移除handle_api_request中间层，直接在指令处理函数中调用fetch_api
+```
+摸鱼日历        → 返回今日摸鱼日历图片
+壁纸            → 返回随机 PC 壁纸
+一言            → 返回一句一言
+猫图            → 返回随机猫图
+网易云歌单      → 返回网易云热门歌单
+B站热门         → 返回 B站 当前热门视频
+```
 
-### v1.3.1
-- 修复asyncio导入问题：添加全局asyncio导入，移除方法内的局部导入，解决"cannot access local variable 'asyncio'"错误
+发送 `帮助` 查看全部可用指令。
 
-### v1.3.0
-- 优化异步网络资源管理：在插件生命周期内复用ClientSession，提高性能和稳定性
-- 添加网络请求重试机制：对超时、连接错误、5xx错误增加有限次重试与指数退避
-- 增强设备信息安全性：默认脱敏输出，隐藏主机名、目录、进程信息等敏感内容
-- 优化异常处理：捕获明确的异常类型，便于定位问题
-- 重构帮助文案实现：提取私有方法统一生成帮助文本，避免代码重复
-- 清理未使用导入：删除MessageEventResult、sys等未使用的导入项
+## 🎮 指令大全（内置 33 个）
 
-### v1.2.1
-- 修复美腿指令：优化API响应处理，添加特殊处理逻辑，确保美腿图片能正常显示
-- 增强API请求日志：添加详细的请求和响应日志，便于调试
+### 图片
 
-### v1.2.0
-- 移除敏感内容：删除"R18"和"色图"指令
-- 优化设备信息显示：隐藏具体路径，保护隐私
-- 提升插件安全性和合规性
+| 指令 | 数据源 | 说明 |
+|------|--------|------|
+| 摸鱼日历 | openapi.dwo.cc | 每日摸鱼日历图片 |
+| 美女 | openapi.dwo.cc | 随机美女图片 |
+| 图片 | openapi.dwo.cc | 随机图片 |
+| 少女图 | api.anosu.top | 二次元少女图 |
+| 白色系 | api.anosu.top | 白色系二次元图 |
+| 黑色系 | api.anosu.top | 黑色系二次元图 |
+| 萌系 | api.anosu.top | 萌系动漫图 |
+| COS图 | api.anosu.top | COS 图片 |
 
-### v1.1.2
-- 新增"设备信息"指令，返回服务器详细信息，包括系统、CPU、内存、磁盘、网络等信息
-- 更新帮助和菜单指令，添加"设备信息"指令的说明
+### 壁纸
 
-### v1.1.1
-- 优化代码，移除API请求时的提示信息，提供更流畅的用户体验
-- 对API地址进行Base64加密处理，提高代码安全性
-- 添加"帮助"和"菜单"指令，方便用户查看所有可用指令
-- 修复已知问题，提升插件稳定性
+| 指令 | 数据源 | 说明 |
+|------|--------|------|
+| 壁纸 | t.mwm.moe | PC 壁纸 |
+| 风景 | t.mwm.moe | 风景壁纸 |
+| 手机壁纸 | t.mwm.moe | 手机壁纸 |
+| 原神壁纸 | t.mwm.moe | 原神主题壁纸 |
+| 高清壁纸 | t.mwm.moe | 高清壁纸 |
+| 4K壁纸 | t.mwm.moe | 4K 壁纸 |
+| 二次元 | dmoe.cc | 二次元随机图 |
+| 东方 | img.paulzzh.com | 东方Project 图 |
+| ACG壁纸 | loliapi.com | ACG 随机图 |
+| 动漫壁纸 | api.btstu.cn | 动漫壁纸 |
+| 必应壁纸 | bing.com | Bing 每日壁纸 |
 
-# Supports
+### 文案
 
-- [AstrBot Repo](https://github.com/AstrBotDevs/AstrBot)
-- [AstrBot Plugin Development Docs (Chinese)](https://docs.astrbot.app/dev/star/plugin-new.html)
-- [AstrBot Plugin Development Docs (English)](https://docs.astrbot.app/en/dev/star/plugin-new.html)
+| 指令 | 数据源 | 说明 |
+|------|--------|------|
+| 文案 | openapi.dwo.cc | 随机文案 |
+| 舔狗日记 | openapi.dwo.cc | 舔狗日记 |
+| 一言 | v1.hitokoto.cn | 一言 |
+| 今日诗词 | v1.jinrishici.com | 今日诗词 |
+| 每日一句 | api.xygeng.cn | 每日一句 |
+| 笑话 | v2.jokeapi.dev | 多语言笑话 |
+
+### 动物
+
+| 指令 | 数据源 | 说明 |
+|------|--------|------|
+| 猫图 | cataas.com | 随机猫图 |
+| 狗狗 | dog.ceo | 随机狗图 |
+| 柴犬 | shibe.online | 柴犬图 |
+| 狐狸 | randomfox.ca | 狐狸图 |
+
+### 音乐 / 视频 / 其他
+
+| 指令 | 数据源 | 说明 |
+|------|--------|------|
+| 网易云歌单 | api.i-meto.com | 网易云热门歌单 |
+| 音乐直链 | api.injahow.cn | MP3 直链 |
+| B站热门 | api.bilibili.com | B站热门视频（含 bvid） |
+| 头像 | api.dicebear.com | 随机机器人头像 |
+| 设备信息 | 本地 | 服务器基本信息（脱敏） |
+| 帮助 / 菜单 | 本地 | 查看全部指令 |
+
+## 🧩 自定义指令
+
+无需写代码，在管理面板的 `api_map` 配置中添加一行即可注册新指令：
+
+```
+每日壁纸|https://t.mwm.moe/pc
+我的语录|https://api.xygeng.cn/one
+```
+
+> 保存配置并**重载插件**后，新指令自动生效；删除某行即禁用对应指令。
+
+### 指令别名
+
+内置别名：`摸鱼`→摸鱼日历、`随机图/随机图片`→图片、`猫猫`→猫图、`狗图`→狗狗 等。
+
+## ⚙️ 配置说明（_conf_schema.json）
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `api_map` | list | 33 条内置接口 | 指令映射表，格式 `指令名|接口地址`，每行一条 |
+| `timeout` | int | 10 | 请求超时（秒） |
+| `max_retries` | int | 3 | 失败最大重试次数 |
+| `user_agent` | str | Chrome UA | 请求 UA（B站等接口需要） |
+
+修改后需在 AstrBot WebUI 中重载插件生效。
+
+## 🖥️ WebUI 管理面板
+
+插件内置「接口管理」页面（`pages/panel/index.html`），基于 AstrBot 官方 [插件 Pages](https://docs.astrbot.app/dev/star/guides/plugin-pages.html) 机制实现：
+
+- 📡 **实时配置**：通过插件后端 API 读取当前生效的指令与接口
+- 📋 **一键复制**：复制单个接口地址，或复制完整 `api_map` 配置文本
+- 🔍 **浏览检索**：107 个精选接口按 7 大分类浏览、搜索、筛选
+- 🌓 **主题适配**：自动跟随 AstrBot 亮 / 暗主题
+
+## 📦 接口清单（500+）
+
+随插件附带两份实测文档：
+
+| 文档 | 内容 |
+|------|------|
+| [500源总清单.md](500源总清单.md) | **513 条**：188 条实测可用 + 325 条公开文档候选（2026-08-08 十轮实测） |
+| [图源清单_2026-08-08.md](图源清单_2026-08-08.md) | **103 条**实测可用图源 / 文案源 / 工具源，含失效黑名单 |
+
+> 所有接口均为全年龄内容。实测时间：2026-08-08。
+
+## ❓ 常见问题
+
+**Q：某个指令没反应 / 返回失败？**
+免费公开接口可能随时失效。在管理面板的 `api_map` 中把该指令地址替换为 [500源总清单.md](500源总清单.md) 中的备选源，重载插件即可。
+
+**Q：B站热门为什么返回的是文字链接？**
+B站官方接口返回 JSON 视频列表（含 `bvid`），插件解析后返回视频标题与播放页链接。纯视频直链接口在 2026 年已基本绝迹。
+
+**Q：如何添加一个全新的接口？**
+1. 确认接口返回图片 / 音频 / JSON 图链 / 文本中的一种；
+2. 在 `api_map` 添加 `指令名|接口地址`；
+3. 重载插件，新指令即可使用。
+
+**Q：WebUI 页面显示「后端连接失败」？**
+独立浏览器打开 HTML 文件时无法连接插件后端，属正常现象。通过 AstrBot WebUI 的插件详情页打开即可实时读取配置。
+
+**Q：插件对 AstrBot 版本有要求吗？**
+要求 AstrBot >= 3.5.19（自动识别 Star 类）。已在 4.26.8 实测通过。
+
+## 🛠️ 技术实现
+
+- Python 异步 + `aiohttp`
+- ClientSession 生命周期管理 + `asyncio.Lock` 防竞态
+- 指数退避重试 + 429/5xx 处理 + Retry-After 尊重
+- 响应自动识别：`image/*` → 图片、`audio/*` → 音乐链接、JSON → 图链/文本提取
+- B站视频 JSON、Meting 歌单 JSON 专用解析
+- 脱敏日志，不泄露外部响应内容
+- 插件 Pages 官方机制 + `context.register_web_api()` 后端 API
+
+## 📝 更新日志
+
+### v2.0.0（2026-08-08）
+- **重构**：移除废弃 `@register`，适配新版 AstrBot；配置化 `api_map`
+- **新增**：28 个新接口（壁纸全家桶、白色系/黑色系、动物、音乐、B站视频等）；插件 WebUI 页面；自定义指令
+- **增强**：UA 伪装、指数退避、429 处理、audio/video 识别、B站/Meting 解析、指令别名
+- **移除**：已失效的 api.pldduck.com 接口（原白丝/黑丝）
+
+完整历史见 [CHANGELOG.md](CHANGELOG.md)。
+
+## 🤝 支持
+
+- [AstrBot 项目](https://github.com/AstrBotDevs/AstrBot)
+- [AstrBot 插件开发文档（中文）](https://docs.astrbot.app/dev/star/plugin-new.html)
+- [AstrBot 插件 Pages 指南](https://docs.astrbot.app/dev/star/guides/plugin-pages.html)
+
+## 📄 许可证
+
+[MIT License](LICENSE)
+
+---
+
+<div align="center"><sub>Made with ❤️ by 落梦陳 · 柯柯API集合 v2.0.0</sub></div>

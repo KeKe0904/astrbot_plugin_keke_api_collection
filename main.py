@@ -1,296 +1,546 @@
-from astrbot.api.event import filter, AstrMessageEvent
-from astrbot.api.star import Context, Star, register
-from astrbot.api import logger
-import aiohttp
-import json
-import platform
-import os
-import psutil
+"""
+【柯柯API集合】AstrBot 插件 v2.0
+- 移除已废弃的 @register 装饰器（新版 AstrBot 自动识别继承 Star 的类）
+- 支持管理面板配置 API 列表（_conf_schema.json）
+- 内置 25+ 全年龄向图片/文案/音乐/视频接口，均可通过面板增删改
+- 支持在配置中添加自定义指令（自动通过兜底分发器响应）
+"""
 import asyncio
+import platform
 
-@register("keke_api_collection", "落梦陳", "【柯柯API集合】包含多种图片和文案API，支持摸鱼日历、文案、舔狗日记、美女、图片、白丝、黑丝", "1.6.1")
+import aiohttp
+
+from astrbot.api import logger
+from astrbot.api.config import AstrBotConfig
+from astrbot.api.event import filter, AstrMessageEvent
+from astrbot.api.star import Context, Star
+from astrbot.api.web import json_response
+
+# 默认 API 映射：指令名 -> 接口地址（可在 AstrBot 管理面板的插件配置中修改）
+DEFAULT_API_MAP = {
+    # 原插件存活接口
+    "摸鱼日历": "https://openapi.dwo.cc/api/moyuya",
+    "文案": "https://openapi.dwo.cc/api/yi",
+    "舔狗日记": "https://openapi.dwo.cc/api/tdog",
+    "美女": "https://openapi.dwo.cc/api/pc_mn",
+    "图片": "https://openapi.dwo.cc/api/yrcmcx",
+    # 壁纸系列（实测可用）
+    "壁纸": "https://t.mwm.moe/pc",
+    "风景": "https://t.mwm.moe/fj",
+    "手机壁纸": "https://t.mwm.moe/mp",
+    "原神壁纸": "https://t.mwm.moe/ys",
+    "高清壁纸": "https://t.mwm.moe/hd",
+    "4K壁纸": "https://t.mwm.moe/4k",
+    "二次元": "https://www.dmoe.cc/random.php",
+    "东方": "https://img.paulzzh.com/touhou/random",
+    "ACG壁纸": "https://www.loliapi.com/acg/",
+    "动漫壁纸": "https://api.btstu.cn/sjbz/api.php?lx=dongman",
+    "必应壁纸": "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1",
+    "少女图": "https://api.anosu.top/img?type=girl",
+    "白色系": "https://api.anosu.top/img?type=white",
+    "黑色系": "https://api.anosu.top/img?type=black",
+    "萌系": "https://api.anosu.top/img?type=moe",
+    "COS图": "https://api.anosu.top/img?type=cos",
+    # 文案语录
+    "一言": "https://v1.hitokoto.cn/?encode=text",
+    "今日诗词": "https://v1.jinrishici.com/",
+    "每日一句": "https://api.xygeng.cn/one",
+    "笑话": "https://v2.jokeapi.dev/joke/Any?type=single",
+    # 动物
+    "猫图": "https://cataas.com/cat",
+    "狗狗": "https://dog.ceo/api/breeds/image/random",
+    "柴犬": "https://shibe.online/api/shibes?count=1&urls=true",
+    "狐狸": "https://randomfox.ca/floof/",
+    # 音乐 / 视频
+    "网易云歌单": "https://api.i-meto.com/meting/api?server=netease&type=playlist&id=3778678",
+    "音乐直链": "https://api.injahow.cn/meting/?type=url&id=347230",
+    "B站热门": "https://api.bilibili.com/x/web-interface/popular?ps=1",
+    "头像": "https://api.dicebear.com/9.x/bottts/svg?seed=keke",
+}
+
+# 内置指令的别名映射：别名 -> 标准指令名
+ALIAS_MAP = {
+    "摸鱼": "摸鱼日历",
+    "moyu": "摸鱼日历",
+    "一言": "一言",
+    "hitokoto": "一言",
+    "风景图": "风景",
+    "随机图": "图片",
+    "随机图片": "图片",
+    "壁纸图": "壁纸",
+    "猫猫": "猫图",
+    "cat": "猫图",
+    "狗图": "狗狗",
+    "dog": "狗狗",
+}
+
+# 内置指令名集合（配置中出现的其它指令名将作为自定义指令处理）
+BUILTIN_COMMANDS = set(DEFAULT_API_MAP.keys()) | set(ALIAS_MAP.keys())
+
+
 class KekeApiCollectionPlugin(Star):
-    def __init__(self, context: Context):
+    """【柯柯API集合】聚合图片、文案、音乐、视频等全年龄 API 接口。"""
+
+    def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
-        # 直接使用API映射关系，移除无意义的Base64编码
-        self.api_map = {
-            "摸鱼日历": "https://openapi.dwo.cc/api/moyuya",
-            "文案": "https://openapi.dwo.cc/api/yi",
-            "舔狗日记": "https://openapi.dwo.cc/api/tdog",
-            "美女": "https://openapi.dwo.cc/api/pc_mn",
-            "图片": "https://openapi.dwo.cc/api/yrcmcx",
-            "白丝": "https://api.pldduck.com/api/baisi",
-            "黑丝": "https://api.pldduck.com/api/heisi"
-        }
-        # 初始化ClientSession和锁
+        self.config = config
         self.session = None
         self.session_lock = asyncio.Lock()
+        self.timeout = 10
+        self.max_retries = 3
+        self.user_agent = (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "Chrome/126.0 Safari/537.36"
+        )
+        self.api_map = {}
+        self.custom_commands = {}
+        self._load_config()
+        # 插件页面后端 API：供 WebUI 查询当前生效的接口配置
+        try:
+            context.register_web_api(
+                f"/{self.__class__.__name__}/config",
+                self.page_config,
+                ["GET"],
+                "获取插件当前接口配置",
+            )
+        except Exception as e:
+            logger.warning(f"注册插件页面 API 失败: {e}")
 
-    @filter.on_astrbot_loaded()
-    async def on_loaded(self):
-        """插件加载时的初始化方法"""
-        # 创建ClientSession
-        if not self.session:
-            self.session = aiohttp.ClientSession()
-        logger.info("柯柯API集合插件初始化完成")
+    # ------------------------------------------------------------- 页面 API
+    async def page_config(self):
+        """WebUI 页面使用的接口配置查询。"""
+        return json_response(
+            {
+                "version": "2.0.0",
+                "api_map": self.api_map,
+                "custom_commands": list(self.custom_commands.keys()),
+                "builtin_commands": sorted(BUILTIN_COMMANDS),
+                "timeout": self.timeout,
+                "max_retries": self.max_retries,
+            }
+        )
 
-    async def fetch_api(self, url):
-        """异步获取API数据"""
-        max_retries = 3
-        retry_delay = 1
-        
-        for attempt in range(max_retries):
+    # ------------------------------------------------------------------ 配置
+    def _load_config(self):
+        """从 AstrBot 面板配置加载 API 映射与请求参数。"""
+        # 读取配置中的自定义映射（格式：指令|URL，每行一条）
+        conf_map = None
+        if self.config:
+            conf_map = self.config.get("api_map")
+            timeout = self.config.get("timeout")
+            retries = self.config.get("max_retries")
+            ua = self.config.get("user_agent")
+            if isinstance(timeout, int) and timeout > 0:
+                self.timeout = timeout
+            if isinstance(retries, int) and retries >= 0:
+                self.max_retries = retries
+            if isinstance(ua, str) and ua.strip():
+                self.user_agent = ua.strip()
+
+        self.api_map = dict(DEFAULT_API_MAP)
+        if isinstance(conf_map, list) and conf_map:
+            parsed = {}
+            for entry in conf_map:
+                if isinstance(entry, str) and "|" in entry:
+                    name, _, url = entry.partition("|")
+                    name, url = name.strip(), url.strip()
+                    if name and url:
+                        parsed[name] = url
+            if parsed:
+                self.api_map = parsed
+
+        # 内置指令之外的指令 -> 自定义指令（由兜底分发器响应）
+        self.custom_commands = {
+            k: v for k, v in self.api_map.items() if k not in BUILTIN_COMMANDS
+        }
+        logger.info(f"柯柯API集合已加载 {len(self.api_map)} 个接口, "
+                    f"其中自定义指令 {len(self.custom_commands)} 个")
+
+    def _get_url(self, name: str) -> str | None:
+        """根据指令名（含别名）获取接口地址。"""
+        return self.api_map.get(name) or self.api_map.get(ALIAS_MAP.get(name, ""))
+
+    # ------------------------------------------------------------- 通用执行
+    async def _run(self, api_name: str, event: AstrMessageEvent):
+        """按指令名查接口并统一处理响应。"""
+        url = self._get_url(api_name)
+        if not url:
+            yield event.plain_result(f"未配置「{api_name}」接口，请在插件配置中添加")
+            return
+        result = await self.fetch_api(url)
+        async for response in self.handle_api_response(event, api_name, result):
+            yield response
+
+    # --------------------------------------------------------------- 网络层
+    async def fetch_api(self, url: str) -> dict:
+        """异步获取 API 数据，带重试与指数退避。"""
+        for attempt in range(self.max_retries + 1):
             try:
-                # 确保ClientSession已初始化且未关闭
                 async with self.session_lock:
                     if self.session is None or self.session.closed:
-                        if self.session is not None and self.session.closed:
-                            logger.info("ClientSession已关闭，重新创建")
-                        else:
-                            logger.info("ClientSession未初始化，创建实例")
                         self.session = aiohttp.ClientSession()
-                
-                async with self.session.get(url, timeout=10) as response:
-                    logger.info(f"API请求状态码: {response.status}")
-                    # 只记录Content-Type，避免记录完整响应头
-                    content_type = response.headers.get('Content-Type', '')
-                    logger.info(f"API响应Content-Type: {content_type}")
-                    
-                    # 对于5xx和429错误，进行重试
-                    if 500 <= response.status < 600 or response.status == 429:
-                        if attempt < max_retries - 1:
-                            logger.warning(f"API返回{response.status}错误，第{attempt+1}次重试...")
-                            # 尝试从Retry-After头获取等待时间
-                            retry_after = response.headers.get('Retry-After')
-                            if retry_after and retry_after.isdigit():
-                                wait_time = int(retry_after)
-                                logger.info(f"根据Retry-After头，等待{wait_time}秒后重试")
-                                await asyncio.sleep(wait_time)
-                            else:
-                                await asyncio.sleep(retry_delay * (2 ** attempt))  # 指数退避
+                headers = {"User-Agent": self.user_agent}
+                timeout = aiohttp.ClientTimeout(total=self.timeout)
+                async with self.session.get(
+                    url, headers=headers, timeout=timeout
+                ) as response:
+                    content_type = response.headers.get("Content-Type", "").lower()
+                    # 5xx / 429 重试
+                    if response.status >= 500 or response.status == 429:
+                        if attempt < self.max_retries:
+                            retry_after = response.headers.get("Retry-After")
+                            wait = int(retry_after) if retry_after and retry_after.isdigit() else (
+                                1 * (2 ** attempt)
+                            )
+                            logger.warning(
+                                f"API 返回 {response.status}, 第 {attempt + 1} 次重试 "
+                                f"({wait}s 后)")
+                            await asyncio.sleep(wait)
                             continue
-                        else:
-                            return {"error": f"API请求失败，状态码：{response.status}"}
-                    
+                        return {"error": f"API请求失败，状态码：{response.status}"}
                     if response.status == 200:
-                        # 尝试解析JSON响应
+                        # 图片 / 音频 / 视频：直接回源地址
+                        if content_type.startswith("image/"):
+                            return {"image_url": url}
+                        if content_type.startswith("audio/"):
+                            return {"audio_url": url}
+                        if content_type.startswith("video/"):
+                            return {"video_url": url}
+                        # 尝试 JSON
                         try:
                             json_data = await response.json()
-                            # 只记录JSON响应的类型和键，不记录具体值
-                            logger.info(f"API返回JSON数据，包含键: {list(json_data.keys())}")
-                            return json_data
-                        except (aiohttp.ContentTypeError, json.JSONDecodeError) as json_error:
-                            logger.debug(f"JSON解析失败: {json_error}")
-                            # 如果不是JSON，返回文本或二进制数据
-                            if 'image' in content_type.lower():
-                                # 对于图片，返回图片URL
-                                return {"image_url": url}
-                            else:
-                                text_data = await response.text()
-                                # 只记录文本长度，不记录具体内容
-                                logger.info(f"API返回文本数据，长度: {len(text_data)}")
-                                # 处理文本响应中的图片URL
-                                if 'http' in text_data and ('.jpg' in text_data or '.png' in text_data or '.gif' in text_data):
-                                    return {"image_url": text_data.strip()}
-                                return {"text": text_data}
-                    else:
-                        return {"error": f"API请求失败，状态码：{response.status}"}
+                            if isinstance(json_data, dict):
+                                return json_data
+                            if isinstance(json_data, list):
+                                return {"data_list": json_data}
+                        except (aiohttp.ContentTypeError, ValueError):
+                            pass
+                        text_data = await response.text()
+                        # 文本里直接带图片地址
+                        for ext in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
+                            if ext in text_data and "http" in text_data:
+                                return {"text": text_data.strip()}
+                        return {"text": text_data.strip()}
+                    return {"error": f"API请求失败，状态码：{response.status}"}
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                if attempt < max_retries - 1:
-                    logger.warning(f"API请求异常: {e}，第{attempt+1}次重试...")
-                    await asyncio.sleep(retry_delay * (2 ** attempt))  # 指数退避
+                if attempt < self.max_retries:
+                    logger.warning(f"API 请求异常: {e}，第 {attempt + 1} 次重试...")
+                    await asyncio.sleep(1 * (2 ** attempt))
                     continue
-                else:
-                    logger.error(f"API请求异常: {e}")
-                    return {"error": f"请求异常: {str(e)}"}
+                logger.error(f"API 请求异常: {e}")
+                return {"error": f"请求异常: {e}"}
             except Exception as e:
-                logger.error(f"API请求未知异常: {e}")
-                return {"error": f"请求异常: {str(e)}"}
+                logger.error(f"API 请求未知异常: {e}")
+                return {"error": f"请求异常: {e}"}
 
-
-
-    async def handle_api_response(self, event: AstrMessageEvent, api_name: str, result: dict):
-        """统一处理API响应"""
+    # ------------------------------------------------------------- 响应解析
+    async def handle_api_response(self, event, api_name: str, result: dict):
+        """统一处理 API 响应。"""
+        if not isinstance(result, dict):
+            yield event.plain_result(f"获取{api_name}成功，但响应无法解析")
+            return
         if "error" in result:
             yield event.plain_result(f"获取{api_name}失败: {result['error']}")
-        elif "image_url" in result:
-            try:
-                yield event.image_result(result["image_url"])
-            except Exception as e:
-                logger.error(f"发送图片失败: {e}")
-                yield event.plain_result(f"获取{api_name}成功，但发送图片失败")
-        elif "text" in result:
+            return
+        if "image_url" in result:
+            yield event.image_result(result["image_url"])
+            return
+        if "audio_url" in result:
+            yield event.plain_result(f"🎵 {api_name}: {result['audio_url']}")
+            return
+        if "video_url" in result:
+            yield event.plain_result(f"🎬 {api_name}: {result['video_url']}")
+            return
+        if "text" in result:
             yield event.plain_result(result["text"])
-        elif isinstance(result, dict):
-            if "data" in result:
-                data = result["data"]
-                if isinstance(data, str):
-                    yield event.plain_result(data)
-                elif isinstance(data, dict):
-                    if "text" in data:
-                        yield event.plain_result(data["text"])
-                    elif "image" in data or "img" in data:
-                        img_url = data.get("image") or data.get("img")
-                        try:
-                            yield event.image_result(img_url)
-                        except Exception as e:
-                            logger.error(f"发送图片失败: {e}")
-                            yield event.plain_result(f"获取{api_name}成功，但发送图片失败")
-                    else:
-                        # 提供统一的解析失败提示
-                        logger.debug(f"无法解析API响应: {data}")
-                        yield event.plain_result(f"获取{api_name}成功，但无法解析响应数据")
+            return
+        # JSON 数据提取
+        if "data_list" in result:
+            items = result["data_list"]
+            if items and isinstance(items[0], dict):
+                first = items[0]
+                # B站热门视频
+                if "bvid" in first:
+                    title = first.get("title", "")
+                    bvid = first["bvid"]
+                    yield event.plain_result(
+                        f"📺 {title}\nhttps://www.bilibili.com/video/{bvid}")
+                    return
+                # Meting 歌单
+                if "url" in first and "name" in first:
+                    name = first.get("name", "")
+                    artist = first.get("artist", "")
+                    yield event.plain_result(f"🎵 {name} - {artist}\n{first['url']}")
+                    return
+                # 图链列表
+                for key in ("url", "image", "img", "image_url"):
+                    if key in first and str(first[key]).startswith("http"):
+                        yield event.image_result(first[key])
+                        return
+            yield event.plain_result(f"获取{api_name}成功，但响应格式未识别")
+            return
+        data = result.get("data")
+        if isinstance(data, str):
+            yield event.plain_result(data)
+        elif isinstance(data, dict):
+            if "text" in data:
+                yield event.plain_result(data["text"])
+            elif "url" in data or "image" in data or "img" in data:
+                img_url = data.get("url") or data.get("image") or data.get("img")
+                if str(img_url).startswith("http"):
+                    yield event.image_result(img_url)
                 else:
-                    # 提供统一的解析失败提示
-                    logger.debug(f"无法解析API响应: {result}")
-                    yield event.plain_result(f"获取{api_name}成功，但无法解析响应数据")
+                    yield event.plain_result(f"获取{api_name}成功，但响应格式未识别")
             else:
-                # 提供统一的解析失败提示
-                logger.debug(f"无法解析API响应: {result}")
-                yield event.plain_result(f"获取{api_name}成功，但无法解析响应数据")
+                yield event.plain_result(str(data))
+        elif isinstance(data, list) and data:
+            first = data[0] if isinstance(data[0], dict) else {}
+            for key in ("url", "image", "img"):
+                if key in first and str(first[key]).startswith("http"):
+                    yield event.image_result(first[key])
+                    return
+            yield event.plain_result(f"获取{api_name}成功，但响应格式未识别")
+        elif "imgurl" in result or "image_url" in result:
+            img_url = result.get("imgurl") or result.get("image_url")
+            yield event.image_result(img_url)
+        elif "url" in result:
+            img_url = result["url"]
+            yield event.image_result(img_url) if str(img_url).startswith("http") \
+                else event.plain_result(str(img_url))
         else:
-            # 提供统一的解析失败提示
-            logger.debug(f"无法解析API响应: {result}")
-            yield event.plain_result(f"获取{api_name}成功，但无法解析响应数据")
+            yield event.plain_result(f"获取{api_name}成功，但响应格式未识别")
 
-    @filter.command("摸鱼日历")
-    async def moyu_calendar(self, event: AstrMessageEvent):
-        """获取摸鱼日历"""
-        result = await self.fetch_api(self.api_map["摸鱼日历"])
-        async for response in self.handle_api_response(event, "摸鱼日历", result):
-            yield response
+    # ------------------------------------------------------------- 图片指令
+    @filter.command("摸鱼日历", alias={"摸鱼"})
+    async def cmd_moyu(self, event):
+        async for r in self._run("摸鱼日历", event):
+            yield r
 
     @filter.command("文案")
-    async def get_copywriting(self, event: AstrMessageEvent):
-        """获取文案"""
-        result = await self.fetch_api(self.api_map["文案"])
-        async for response in self.handle_api_response(event, "文案", result):
-            yield response
+    async def cmd_copywriting(self, event):
+        async for r in self._run("文案", event):
+            yield r
 
     @filter.command("舔狗日记")
-    async def get_tdog(self, event: AstrMessageEvent):
-        """获取舔狗日记"""
-        result = await self.fetch_api(self.api_map["舔狗日记"])
-        async for response in self.handle_api_response(event, "舔狗日记", result):
-            yield response
+    async def cmd_tdog(self, event):
+        async for r in self._run("舔狗日记", event):
+            yield r
 
     @filter.command("美女")
-    async def get_beauty(self, event: AstrMessageEvent):
-        """获取美女图片"""
-        result = await self.fetch_api(self.api_map["美女"])
-        async for response in self.handle_api_response(event, "美女", result):
-            yield response
+    async def cmd_beauty(self, event):
+        async for r in self._run("美女", event):
+            yield r
 
-    @filter.command("图片")
-    async def get_image(self, event: AstrMessageEvent):
-        """获取随机图片"""
-        result = await self.fetch_api(self.api_map["图片"])
-        async for response in self.handle_api_response(event, "图片", result):
-            yield response
+    @filter.command("图片", alias={"随机图", "随机图片"})
+    async def cmd_image(self, event):
+        async for r in self._run("图片", event):
+            yield r
 
-    @filter.command("白丝")
-    async def get_baisi(self, event: AstrMessageEvent):
-        """获取白丝图片"""
-        result = await self.fetch_api(self.api_map["白丝"])
-        async for response in self.handle_api_response(event, "白丝", result):
-            yield response
+    @filter.command("壁纸", alias={"壁纸图"})
+    async def cmd_wallpaper(self, event):
+        async for r in self._run("壁纸", event):
+            yield r
 
-    @filter.command("黑丝")
-    async def get_heisi(self, event: AstrMessageEvent):
-        """获取黑丝图片"""
-        result = await self.fetch_api(self.api_map["黑丝"])
-        async for response in self.handle_api_response(event, "黑丝", result):
-            yield response
+    @filter.command("风景", alias={"风景图"})
+    async def cmd_scenery(self, event):
+        async for r in self._run("风景", event):
+            yield r
 
-    def _generate_help_text(self):
-        """生成帮助文本"""
-        help_message = "【柯柯API集合】可用指令：\n"
-        for command in self.api_map.keys():
-            help_message += f"- {command}\n"
-        help_message += "- 设备信息\n"
-        help_message += "\n发送以上指令即可调用对应API获取内容"
-        return help_message
+    @filter.command("手机壁纸")
+    async def cmd_mp(self, event):
+        async for r in self._run("手机壁纸", event):
+            yield r
 
-    @filter.command("帮助")
-    async def help(self, event: AstrMessageEvent):
-        """查看所有可用指令"""
-        help_message = self._generate_help_text()
-        yield event.plain_result(help_message)
+    @filter.command("原神壁纸")
+    async def cmd_ys(self, event):
+        async for r in self._run("原神壁纸", event):
+            yield r
 
-    @filter.command("菜单")
-    async def menu(self, event: AstrMessageEvent):
-        """查看所有可用指令"""
-        help_message = self._generate_help_text()
-        yield event.plain_result(help_message)
+    @filter.command("高清壁纸")
+    async def cmd_hd(self, event):
+        async for r in self._run("高清壁纸", event):
+            yield r
 
+    @filter.command("4K壁纸")
+    async def cmd_4k(self, event):
+        async for r in self._run("4K壁纸", event):
+            yield r
+
+    @filter.command("二次元")
+    async def cmd_anime(self, event):
+        async for r in self._run("二次元", event):
+            yield r
+
+    @filter.command("东方")
+    async def cmd_touhou(self, event):
+        async for r in self._run("东方", event):
+            yield r
+
+    @filter.command("ACG壁纸")
+    async def cmd_acg(self, event):
+        async for r in self._run("ACG壁纸", event):
+            yield r
+
+    @filter.command("动漫壁纸")
+    async def cmd_acgwp(self, event):
+        async for r in self._run("动漫壁纸", event):
+            yield r
+
+    @filter.command("必应壁纸")
+    async def cmd_bing(self, event):
+        async for r in self._run("必应壁纸", event):
+            yield r
+
+    @filter.command("少女图")
+    async def cmd_girl(self, event):
+        async for r in self._run("少女图", event):
+            yield r
+
+    @filter.command("白色系")
+    async def cmd_white(self, event):
+        async for r in self._run("白色系", event):
+            yield r
+
+    @filter.command("黑色系")
+    async def cmd_black(self, event):
+        async for r in self._run("黑色系", event):
+            yield r
+
+    @filter.command("萌系")
+    async def cmd_moe(self, event):
+        async for r in self._run("萌系", event):
+            yield r
+
+    @filter.command("COS图")
+    async def cmd_cos(self, event):
+        async for r in self._run("COS图", event):
+            yield r
+
+    # ------------------------------------------------------------- 文案指令
+    @filter.command("一言", alias={"hitokoto"})
+    async def cmd_hitokoto(self, event):
+        async for r in self._run("一言", event):
+            yield r
+
+    @filter.command("今日诗词")
+    async def cmd_poem(self, event):
+        async for r in self._run("今日诗词", event):
+            yield r
+
+    @filter.command("每日一句")
+    async def cmd_daily(self, event):
+        async for r in self._run("每日一句", event):
+            yield r
+
+    @filter.command("笑话")
+    async def cmd_joke(self, event):
+        async for r in self._run("笑话", event):
+            yield r
+
+    # ------------------------------------------------------------- 动物指令
+    @filter.command("猫图", alias={"猫猫"})
+    async def cmd_cat(self, event):
+        async for r in self._run("猫图", event):
+            yield r
+
+    @filter.command("狗狗", alias={"狗图"})
+    async def cmd_dog(self, event):
+        async for r in self._run("狗狗", event):
+            yield r
+
+    @filter.command("柴犬")
+    async def cmd_shiba(self, event):
+        async for r in self._run("柴犬", event):
+            yield r
+
+    @filter.command("狐狸")
+    async def cmd_fox(self, event):
+        async for r in self._run("狐狸", event):
+            yield r
+
+    # ------------------------------------------------------------- 音乐/视频
+    @filter.command("网易云歌单")
+    async def cmd_music(self, event):
+        async for r in self._run("网易云歌单", event):
+            yield r
+
+    @filter.command("音乐直链")
+    async def cmd_music_url(self, event):
+        async for r in self._run("音乐直链", event):
+            yield r
+
+    @filter.command("B站热门")
+    async def cmd_bili(self, event):
+        async for r in self._run("B站热门", event):
+            yield r
+
+    @filter.command("头像")
+    async def cmd_avatar(self, event):
+        async for r in self._run("头像", event):
+            yield r
+
+    # --------------------------------------------------------- 自定义指令兜底
+    @filter.regex(r".+")
+    async def custom_command_dispatcher(self, event: AstrMessageEvent):
+        """响应面板配置中新增的自定义指令（非内置指令名）。"""
+        if not self.custom_commands:
+            return
+        msg = event.message_str.strip()
+        matched = None
+        for name in self.custom_commands:
+            if msg == name or msg.endswith(name):
+                matched = name
+                break
+        if not matched:
+            return
+        event.stop_event()
+        async for r in self._run(matched, event):
+            yield r
+
+    # ------------------------------------------------------------- 系统指令
     @filter.command("设备信息")
     async def device_info(self, event: AstrMessageEvent):
-        """查看服务器基本信息"""
+        """查看服务器基本信息（脱敏版）"""
         try:
-            # 收集系统信息（简化版）
-            info = []
-            info.append("**【服务器基本信息】**")
-            info.append("")
-            
-            # 系统信息
-            info.append("**系统信息**")
-            info.append(f"- 操作系统: {platform.system()}")  # 只显示系统类型
-            info.append(f"- 架构: {platform.architecture()[0]}")
-            info.append("")
-            
-            # Python信息
-            info.append("**Python信息**")
-            # 只显示Python主版本
-            python_version = platform.python_version()
-            main_version = ".".join(python_version.split(".")[:2])
-            info.append(f"- Python版本: {main_version}.*")
-            info.append("")
-            
-            # CPU信息（简化）
-            cpu_count = psutil.cpu_count(logical=True)
-            info.append("**CPU信息**")
-            info.append(f"- 核心数: {cpu_count}")
-            info.append("")
-            
-            # 内存信息（简化）
-            memory = psutil.virtual_memory()
-            total_memory = round(memory.total / (1024**3), 2)
-            info.append("**内存信息**")
-            info.append(f"- 总量: {total_memory} GB")
-            info.append("")
-            
-            # 磁盘信息（简化）
-            info.append("**磁盘信息**")
-            try:
-                # 使用跨平台的根目录路径
-                root_path = os.path.abspath(os.sep)
-                disk = psutil.disk_usage(root_path)
-                total_disk = round(disk.total / (1024**3), 2)
-                info.append(f"- 总量: {total_disk} GB")
-            except Exception as e:
-                logger.error(f"获取磁盘信息失败: {e}")
-                info.append("- 状态: 无法获取")
-            info.append("")
-            
-            # 网络信息（简化）
-            info.append("**网络信息**")
-            info.append("- 网络状态: 正常")
-            info.append("")
-            
-            # 进程信息（简化）
-            info.append("**进程信息**")
-            info.append("- 进程状态: 正常")
-            
-            # 生成最终信息
-            info_message = "\n".join(info)
-            yield event.plain_result(info_message)
+            memory = platform.uname()
+            info = [
+                "**【服务器基本信息】**",
+                "",
+                "**系统信息**",
+                f"- 操作系统: {memory.system}",
+                f"- 架构: {platform.architecture()[0]}",
+                "",
+                "**Python信息**",
+                f"- Python版本: {'.'.join(platform.python_version().split('.')[:2])}.*",
+                "",
+                "**运行状态**",
+                "- 网络状态: 正常",
+                "- 进程状态: 正常",
+            ]
+            yield event.plain_result("\n".join(info))
         except Exception as e:
             logger.error(f"获取设备信息失败: {e}")
             yield event.plain_result("获取设备信息失败，请稍后再试")
 
+    def _generate_help_text(self):
+        lines = ["【柯柯API集合】可用指令："]
+        for command in self.api_map:
+            lines.append(f"- {command}")
+        lines.append("- 设备信息")
+        lines.append("- 帮助 / 菜单")
+        lines.append("\n发送「帮助」查看全部指令，接口可在插件配置面板中增删")
+        return "\n".join(lines)
+
+    @filter.command("帮助")
+    async def help(self, event: AstrMessageEvent):
+        yield event.plain_result(self._generate_help_text())
+
+    @filter.command("菜单")
+    async def menu(self, event: AstrMessageEvent):
+        yield event.plain_result(self._generate_help_text())
+
+    # ------------------------------------------------------------- 生命周期
     async def terminate(self):
-        """插件销毁方法"""
-        # 关闭ClientSession
-        if self.session:
+        if self.session and not self.session.closed:
             await self.session.close()
         logger.info("柯柯API集合插件已销毁")
